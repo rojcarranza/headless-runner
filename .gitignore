@@ -1,0 +1,4 @@
+# Never commit anything the scripts make while running.
+.headless-runner/
+*.log
+known_hosts

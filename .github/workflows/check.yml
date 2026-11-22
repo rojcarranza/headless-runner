@@ -1,0 +1,16 @@
+name: check
+# Manual run of verify.sh on one of your computers, through runner-up. The
+# computer's name is its pool label (the user's short name).
+on:
+  workflow_dispatch:
+    inputs:
+      computer:
+        description: The computer to check (its name, as in runner-up's pool)
+        required: true
+        type: string
+jobs:
+  verify:
+    runs-on: ${{ inputs.computer }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./verify.sh --ci

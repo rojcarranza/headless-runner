@@ -1,0 +1,4 @@
+# The local gate: no GitHub Actions run, so no plan minutes are spent.
+no_ci: true
+commands:
+  lint: "./scripts/check.sh"
