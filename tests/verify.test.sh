@@ -2,7 +2,7 @@
 # shellcheck disable=SC2015,SC2016,SC2034 # pass/fail helpers never fail; stand-ins are single-quoted on purpose
 # Intent (the captain): verify.sh reads every setting back, reports one line
 # per check, changes nothing, and also reports the case where another user is
-# at the screen. Stand-ins print what macOS prints; HEALTHY=0 breaks one.
+# at the screen. Stand-ins print what macOS prints; FILEVAULT, LID, RESTING and CONSOLE break one each.
 # shellcheck source=tests/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 export HOME="$T/home" HR_NAME=builder DEV_HOME="$T/home/Dev/github.com"
@@ -32,7 +32,6 @@ mkdir -p "$(dirname "$HV")" "$T/rancher" "$HOME/Library/LaunchAgents"
 printf '#!/bin/sh\necho "ok    read with $1"\necho "ok    password sign-in refused (key only)"\nif [ "${FILEVAULT-off}" = on ]; then echo "FAIL  FileVault off (needed for automatic sign-in) (found true, want false)"; else echo "ok    FileVault off (needed for automatic sign-in)"; fi\n' > "$HV"
 export HR_RANCHER_APP="$T/rancher"
 export PATH="$T/bin:$PATH"
-ln -sf "$(command -v jq)" "$T/bin/jq" 2> /dev/null || true
 
 out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 0 "a healthy Mac passes"

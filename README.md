@@ -115,7 +115,8 @@ runs on Linux or a Mac and spends no GitHub Actions minutes.
 
 What the checks cannot prove (they run on Linux with stand-ins for macOS
 commands): that headless, Xcode, Homebrew, launchd and `systemsetup` behave on
-the Air as the scripts expect. Only a run of `bash setup.sh` on the Air and its
+the Air as the scripts expect, and that Rancher Desktop opens on its first start
+(macOS may ask for one click) and then makes its `docker` command. Only a run of `bash setup.sh` on the Air and its
 `verify.sh` prove that. The manual workflow `.github/workflows/check.yml` runs
 `verify.sh` on a named computer through runner-up.
 

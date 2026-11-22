@@ -50,24 +50,6 @@ ENV
 # nobody at the screen. Settings: the Docker engine (moby), no Kubernetes.
 # "version" is the settings version the profile is written at (10); Rancher
 # Desktop migrates an older profile to its own current version on first open.
-# start_rancher_desktop: Rancher Desktop makes its docker command (~/.rd/bin/docker)
-# only the first time it starts, and PraiseLineup's local server stops without it.
-# Opened in view, once, while a person is at the screen: macOS asks them to click
-# Open the first time an app installed by Homebrew starts. Waits up to 5 minutes
-# for Docker to answer.
-start_rancher_desktop() {
-  local docker="$HOME/.rd/bin/docker" tries=0
-  [ -x "$docker" ] && "$docker" info > /dev/null 2>&1 && return 0
-  say "opening Rancher Desktop once; if macOS asks, click Open in its window"
-  open -a "Rancher Desktop" || die "could not open Rancher Desktop; open it from Applications, then run bash setup.sh machine again"
-  until [ -x "$docker" ] && "$docker" info > /dev/null 2>&1; do
-    tries=$((tries + 1))
-    [ "$tries" -lt 60 ] || die "Docker did not answer from Rancher Desktop; finish its window, then run bash setup.sh machine again"
-    sleep 5
-  done
-  say "Docker answers"
-}
-
 ensure_rancher_profile() {
   local profile="$HOME/Library/Preferences/io.rancherdesktop.profile.defaults.plist"
   [ ! -e "$profile" ] || return 0
@@ -86,4 +68,22 @@ ensure_rancher_profile() {
 </plist>
 PLIST
   say "wrote Rancher Desktop's defaults profile (no first-run window)"
+}
+
+# start_rancher_desktop: Rancher Desktop makes its docker command (~/.rd/bin/docker)
+# only the first time it starts, and PraiseLineup's local server stops without it.
+# Opened in view, once, while a person is at the screen: macOS asks them to click
+# Open the first time an app installed by Homebrew starts. Waits up to 5 minutes
+# for Docker to answer.
+start_rancher_desktop() {
+  local docker="$HOME/.rd/bin/docker" tries=0
+  [ -x "$docker" ] && "$docker" info > /dev/null 2>&1 && return 0
+  say "opening Rancher Desktop once; if macOS asks, click Open in its window"
+  open -a "Rancher Desktop" || die "could not open Rancher Desktop; open it from Applications, then run bash setup.sh machine again"
+  until [ -x "$docker" ] && "$docker" info > /dev/null 2>&1; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 60 ] || die "Docker did not answer from Rancher Desktop; finish its window, then run bash setup.sh machine again"
+    sleep 5
+  done
+  say "Docker answers"
 }
