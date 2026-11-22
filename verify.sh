@@ -36,6 +36,10 @@ headless_checks() {
 # runner-up status prints "place ID on MACHINE (host, N cores, M MB) STATE" for
 # each place, and also "waiting ..." lines for queued jobs. Only this Mac's place
 # lines count, and none of them may be resting.
+# Called directly (not inside bash -c, whose own arguments would match pgrep -f).
+work_runs_here() {
+  pgrep -u "$(id -u)" -f 'runner-up serve' > /dev/null && xcrun simctl list devices available > /dev/null
+}
 runner_up_place_ok() {
   local lines
   lines="$(runner-up status 2> /dev/null | grep -E "^[[:space:]]*place .* on ${HR_NAME} \(")"
@@ -47,6 +51,8 @@ check "admin user $HR_NAME" bash -c "id -Gn | tr ' ' '\n' | grep -qx admin"
 check "secure token for $HR_NAME" bash -c "sysadminctl -secureTokenStatus '$HR_NAME' 2>&1 | grep -qi ENABLED"
 check "Remote Login is on" nc -z 127.0.0.1 22
 headless_checks
+# headless checks sleep and disksleep only; the lid-closed setting is this repository's.
+check "awake with the lid closed (pmset disablesleep)" bash -c "pmset -g | grep -Eq 'SleepDisabled[[:space:]]+1'"
 check "Xcode $XCODE_MIN or later selected" bash -c "v=\$(xcodebuild -version | awk '/^Xcode/ { print \$2; exit }'); [ \"\$(printf '%s\n%s\n' '$XCODE_MIN' \"\$v\" | sort -V | head -n 1)\" = '$XCODE_MIN' ]"
 check "Xcode license accepted" xcodebuild -checkFirstLaunchStatus
 check "iOS 27 runtime installed" bash -c "xcrun simctl list runtimes available | grep -q 'iOS 27'"
@@ -68,7 +74,7 @@ check "GitHub sign-in works (runner-up needs it)" gh auth status
 console="$(stat -f%Su /dev/console 2> /dev/null)"
 if [ -n "$console" ] && [ "$console" != "$HR_NAME" ] && [ "$console" != root ]; then
   ok "another user ($console) is at the screen"
-  check "work still runs here: runner-up and the simulator service answer" bash -c "pgrep -u '$(id -u)' -f 'runner-up serve' && xcrun simctl list devices available"
+  check "work still runs here: runner-up and the simulator service answer" work_runs_here
 else
   echo "note  switched-user check skipped: $HR_NAME is at the screen. Switch User to another account and run ./verify.sh over SSH to run it"
 fi

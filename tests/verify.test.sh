@@ -18,7 +18,7 @@ stub sysadminctl 'echo "2026-11-22 sysadminctl[1:2] Secure token is ENABLED for 
 stub nc 'exit 0'
 stub defaults 'echo builder'
 stub fdesetup 'if [ "${FILEVAULT-off}" = on ]; then echo "FileVault is On."; else echo "FileVault is Off."; fi'
-stub pmset 'printf " SleepDisabled\t\t1\n"'
+stub pmset 'printf " SleepDisabled\t\t${LID-1}\n"'
 stub tailscale 'echo "{\"BackendState\": \"Running\"}"'
 stub xcodebuild 'case "$1" in -version) printf "Xcode 27.1\nBuild version 27A100\n" ;; esac'
 stub xcrun 'case "$*" in "simctl list runtimes available") echo "iOS 27.1 (27.1 - 27A5000) - com.apple.CoreSimulator.SimRuntime.iOS-27-1" ;; "simctl list devices available") printf "== Devices ==\n-- iOS 27.1 --\n    iPhone 18 Pro (AAAAAAAA-0000-0000-0000-000000000001) (Shutdown)\n    iPad Pro 11-inch (M5) (AAAAAAAA-0000-0000-0000-000000000002) (Shutdown)\n" ;; esac'
@@ -60,6 +60,16 @@ assert_eq "$rc" 1 "a resting runner-up place fails the run, whatever waits on it
 assert_contains "$out" "FAIL  runner-up has a place on builder and it is not resting" "and names the line"
 out="$(PLACE_MACHINE=other "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 1 "no runner-up place for this computer fails the run, a waiting line named for it does not pass it"
+
+out="$(LID=0 "$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "a Mac that sleeps when the lid closes fails the run"
+assert_contains "$out" "FAIL  awake with the lid closed" "and names the line"
+
+# The switched-user check must fail when the coordinator is not running.
+stub pgrep 'exit 1'
+out="$(CONSOLE=guest "$ROOT/verify.sh" 2>&1)"
+assert_contains "$out" "FAIL  work still runs here" "with another user at the screen, a stopped runner-up fails the work-still-runs line"
+stub pgrep 'echo 123'
 
 # After a restart the login agent must go: its file is deleted before the agent
 # is stopped, because stopping the agent ends the script.
