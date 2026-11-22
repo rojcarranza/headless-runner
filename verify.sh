@@ -20,21 +20,26 @@ check() { # check DESCRIPTION COMMAND...
   if "$@" > /dev/null 2>&1; then ok "$d"; else bad "$d"; fi
 }
 
-# headless's own read-back of what its settings declare: FileVault, auto
-# sign-in, key-only SSH, sleep, Tailscale. Its lines pass through here.
-HEADLESS_VERIFY="$(clone_path kunchenguid/headless)/skills/headless/scripts/mac/remote/verify.sh"
+# headless's own verify.sh reads back everything its settings declare: FileVault,
+# auto sign-in, key-only SSH (it tries a password sign-in and expects it refused),
+# sleep and Tailscale. It signs in over SSH by key, so a sudo ticket from this
+# terminal cannot make its "sudo asks for the password" line fail falsely.
+HEADLESS_VERIFY="$(clone_path kunchenguid/headless)/skills/headless/scripts/mac/verify.sh"
 headless_checks() {
-  local out line
+  local out n
   [ -f "$HEADLESS_VERIFY" ] || { bad "headless's verify.sh is at $HEADLESS_VERIFY (run bash setup.sh machine)"; return; }
-  out="$(/bin/bash "$HEADLESS_VERIFY" 2>&1)" || true
-  [ -n "$out" ] || { bad "headless's verify.sh printed nothing"; return; }
-  while IFS= read -r line; do
-    case "$line" in
-      ok* ) echo "$line" ;;
-      FAIL* ) echo "$line"; fails=$((fails + 1)) ;;
-      * ) echo "$line" ;;
-    esac
-  done <<< "$out"
+  out="$(/bin/bash "$HEADLESS_VERIFY" "$HR_CONFIG" 2>&1)" || true
+  [ -z "$out" ] || printf '%s\n' "$out"
+  n="$(grep -c '^FAIL' <<< "$out")"
+  if [ "$n" = 0 ] && ! grep -q '^ok' <<< "$out"; then bad "headless's verify.sh printed no result"; else fails=$((fails + n)); fi
+}
+# runner-up status prints "place ID on MACHINE (host, N cores, M MB) STATE" for
+# each place, and also "waiting ..." lines for queued jobs. Only this Mac's place
+# lines count, and none of them may be resting.
+runner_up_place_ok() {
+  local lines
+  lines="$(runner-up status 2> /dev/null | grep -E "^[[:space:]]*place .* on ${HR_NAME} \(")"
+  [ -n "$lines" ] && ! grep -qi resting <<< "$lines"
 }
 
 [ "$(uname -s)" = Darwin ] || { bad "this is a Mac"; exit 1; }
@@ -53,10 +58,10 @@ check "DEV_HOME is set to $DEV_HOME in ~/.zprofile" grep -qxF "export DEV_HOME=\
 # Every clone sits at ~/Dev/github.com/<owner>/<repo>.
 check "this repository is at $DEV_HOME/rojcarranza/headless-runner" test -d "$DEV_HOME/rojcarranza/headless-runner/.git"
 check "runner-up login agent is loaded" launchctl print "gui/$(id -u)/com.github.runner-up"
-# runner-up status reads the setup and the coordinator's saved state; the place
-# is up when the coordinator process runs and the place is not resting.
+# runner-up status reads the setup and the coordinator's saved state, so the
+# running coordinator process is checked beside it.
 check "runner-up coordinator is running" pgrep -u "$(id -u)" -f 'runner-up serve'
-check "runner-up place $HR_NAME is not resting" bash -c "runner-up status | grep -i '$HR_NAME' | grep -viq resting"
+check "runner-up has a place on $HR_NAME and it is not resting" runner_up_place_ok
 check "GitHub sign-in works (runner-up needs it)" gh auth status
 
 # With another user at the screen, this user's session must keep working.

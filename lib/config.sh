@@ -43,3 +43,28 @@ TAILSCALE_KEY_REF=
 TAILSCALE_LOGIN_SERVER=
 ENV
 }
+
+# Rancher Desktop shows a first-run window, and starts no Docker until a person
+# closes it, when it has no settings file and no deployment profile. A defaults
+# profile skips that window, so the nightly's local server can start Docker with
+# nobody at the screen. Settings: the Docker engine (moby), no Kubernetes.
+# "version" is Rancher Desktop's settings version (10 at the time of writing).
+ensure_rancher_profile() {
+  local profile="$HOME/Library/Preferences/io.rancherdesktop.profile.defaults.plist"
+  [ ! -e "$profile" ] || return 0
+  mkdir -p "$(dirname "$profile")"
+  cat > "$profile" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>version</key><integer>10</integer>
+  <key>containerEngine</key>
+  <dict><key>name</key><string>moby</string></dict>
+  <key>kubernetes</key>
+  <dict><key>enabled</key><false/></dict>
+</dict>
+</plist>
+PLIST
+  say "wrote Rancher Desktop's defaults profile (no first-run window)"
+}

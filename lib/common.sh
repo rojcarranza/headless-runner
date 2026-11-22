@@ -27,6 +27,8 @@ die() { printf 'headless-runner: %s\n' "$*" >&2; exit 1; }
 # on its own asks here, hidden, and keeps it only in memory. It is a plain
 # shell variable, never exported: setup.sh hands it only to the stages that use it.
 need_password() {
+  # Never let it reach child processes: only with_password and sudo's input do.
+  export -n HR_PASSWORD
   [ -z "${HR_PASSWORD-}" ] || return 0
   [ -t 0 ] || die "no password: run bash setup.sh from Terminal so it can ask for it"
   printf 'Password for %s (kept in memory for this run only): ' "$HR_NAME" >&2

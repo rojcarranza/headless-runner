@@ -11,9 +11,10 @@ The README explains how a person runs them; this file says how to change them.
 - No secret in any file: no password, token or private key. `setup.sh` asks the
   password once and keeps it in `HR_PASSWORD` in memory; headless reads it
   through its `cmd:` store. Sign-ins stay the person's steps.
-- Versions the scripts read (headless, Xcode) are pinned in `pins.env`. runner-up
-  and no-mistakes are pinned in `machine/flake.nix` and `machine/flake.lock`;
-  change both together. Do not edit `machine/flake.lock` by hand:
+- Xcode's version is pinned in `pins.env`. headless, runner-up and no-mistakes
+  are pinned in `machine/flake.nix` and `machine/flake.lock`; change both
+  together (the machine stage runs headless's scripts from the commit in
+  `flake.lock`). Do not edit `machine/flake.lock` by hand:
   `nix flake lock path:$PWD/machine`.
 - The gate is `./scripts/check.sh`: `bash -n`, shellcheck, the secret scan, the
   script tests in `tests/` (stand-ins print what macOS prints) and the machine

@@ -25,14 +25,16 @@ stub xcrun 'case "$*" in "simctl list runtimes available") echo "iOS 27.1 (27.1 
 stub docker 'exit 0'
 stub git 'exit 0'; stub gh 'exit 0'; stub python3 'exit 0'; stub no-mistakes 'exit 0'
 stub launchctl 'exit 0'
-stub runner-up 'echo "place builder  online"'
+# runner-up's real status lines; RESTING=1 rests the place and a job waits on the pool.
+stub runner-up 'echo "place host-1 on ${PLACE_MACHINE-builder} (host, 4 cores, 8192 MB) $([ "${RESTING-}" = 1 ] && echo "resting (agent unreachable since 2026-11-22T10:00:00Z)" || echo free)"
+echo "waiting rojcarranza/builder-app builder job-1 since 2026-11-22T10:00:00Z"'
 stub pgrep 'echo 123'
 stub stat 'echo "${CONSOLE-builder}"'
 stub osascript 'exit 0'
-# headless's own read-back, as the pinned clone holds it; FILEVAULT=on breaks one line.
-HV="$DEV_HOME/kunchenguid/headless/skills/headless/scripts/mac/remote/verify.sh"
+# headless's own verify.sh "DIR", as the pinned clone holds it; FILEVAULT=on breaks one line.
+HV="$DEV_HOME/kunchenguid/headless/skills/headless/scripts/mac/verify.sh"
 mkdir -p "$(dirname "$HV")" "$T/rancher" "$HOME/Library/LaunchAgents"
-printf '#!/bin/sh\necho "ok    sshd key-only drop-in"\nif [ "${FILEVAULT-off}" = on ]; then echo "FAIL  FileVault off (needed for automatic sign-in) (found true, want false)"; else echo "ok    FileVault off (needed for automatic sign-in)"; fi\n' > "$HV"
+printf '#!/bin/sh\necho "ok    read with $1"\necho "ok    password sign-in refused (key only)"\nif [ "${FILEVAULT-off}" = on ]; then echo "FAIL  FileVault off (needed for automatic sign-in) (found true, want false)"; else echo "ok    FileVault off (needed for automatic sign-in)"; fi\n' > "$HV"
 export HR_RANCHER_APP="$T/rancher"
 export PATH="$T/bin:$PATH"
 ln -sf "$(command -v jq)" "$T/bin/jq" 2> /dev/null || true
@@ -51,6 +53,14 @@ out="$(CONSOLE=guest "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 0 "another user at the screen still passes"
 assert_contains "$out" "ok    another user (guest) is at the screen" "and the switched-user check runs"
 assert_contains "$out" "ok    work still runs here" "runner-up and the simulator answer in this session"
+assert_contains "$(CONSOLE=builder "$ROOT/verify.sh" 2>&1)" "ok    read with $HR_STATE/config/builder" "headless's verify.sh is run on this computer's config folder, which checks password refusal"
+
+out="$(RESTING=1 "$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "a resting runner-up place fails the run, whatever waits on its pool"
+assert_contains "$out" "FAIL  runner-up has a place on builder and it is not resting" "and names the line"
+out="$(PLACE_MACHINE=other "$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "no runner-up place for this computer fails the run, a waiting line named for it does not pass it"
+
 # After a restart the login agent must go: its file is deleted before the agent
 # is stopped, because stopping the agent ends the script.
 PLIST="$HOME/Library/LaunchAgents/com.headless-runner.verify.plist"

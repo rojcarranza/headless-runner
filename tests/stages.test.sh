@@ -37,7 +37,7 @@ stub runner-up 'CFG="$HOME/Library/Application Support/runner-up/config.json"
 case "$1" in
   init) mkdir -p "$(dirname "$CFG")"; echo "{\"machines\":[]}" > "$CFG" ;;
   machine) [ -z "${FAIL_ADD-}" ] || exit 1; jq --arg n "$3" ".machines += [{name: \$n}]" "$CFG" > "$CFG.new" && mv "$CFG.new" "$CFG" ;;
-  status) echo "place $HR_NAME free" ;;
+  status) echo "place host-1 on $HR_NAME (host, 4 cores, 8192 MB) free" ;;
 esac'
 FAIL_ADD=1 bash "$ROOT/stages/runner-up.sh" > /dev/null 2>&1 && fail "a failed machine add stops the stage" || pass "a failed machine add stops the stage"
 assert_eq "$(jq '.machines | length' "$CFG")" 0 "the setup file exists with no machine"
@@ -45,4 +45,15 @@ bash "$ROOT/stages/runner-up.sh" > /dev/null 2>&1
 assert_eq "$(jq -r '.machines[0].name' "$CFG")" builder "a rerun adds the machine the file lacks"
 bash "$ROOT/stages/runner-up.sh" > /dev/null 2>&1
 assert_eq "$(jq '.machines | length' "$CFG")" 1 "and a second rerun adds nothing twice"
+# --- the password stays out of child processes, even when it arrives exported
+out="$(HR_PASSWORD=sentinel-9f3 bash -c '. "$1/lib/common.sh"; need_password; bash -c "echo \"[\${HR_PASSWORD-}]\""' _ "$ROOT")"
+assert_eq "$out" "[]" "need_password stops the password reaching child processes"
+
+# --- Rancher Desktop's defaults profile: parses, names the engine, never overwritten
+. "$ROOT/lib/common.sh"; . "$ROOT/lib/config.sh"
+ensure_rancher_profile > /dev/null
+P="$HOME/Library/Preferences/io.rancherdesktop.profile.defaults.plist"
+assert_eq "$(python3 -I -c 'import plistlib,sys; d=plistlib.load(open(sys.argv[1],"rb")); print(d["version"], d["containerEngine"]["name"], d["kubernetes"]["enabled"])' "$P")" "10 moby False" "the profile parses and sets version, engine and no Kubernetes"
+echo marker > "$P"; ensure_rancher_profile > /dev/null
+assert_eq "$(cat "$P")" marker "an existing profile is left alone"
 done_tests

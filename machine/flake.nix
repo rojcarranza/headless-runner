@@ -2,7 +2,8 @@
   description = "A Mac that takes tasks and iOS CI: headless layer plus the tools every task needs";
 
   inputs = {
-    # Pinned by flake.lock to the commits in ../pins.env.
+    # The one place the three tools are pinned, with flake.lock (see AGENTS.md);
+    # stages/machine.sh reads the headless commit back from flake.lock.
     headless.url = "github:kunchenguid/headless/e9168b7977b39c488241fbfb62bbb12268cd2862";
     nixpkgs.follows = "headless/nixpkgs";
     nix-darwin.follows = "headless/nix-darwin";
