@@ -2,7 +2,8 @@
 # shellcheck disable=SC2015,SC2016,SC2034 # pass/fail helpers never fail; stand-ins are single-quoted on purpose
 # Intent (the captain): verify.sh reads every setting back, reports one line
 # per check, changes nothing, and also reports the case where another user is
-# at the screen. Stand-ins print what macOS prints; FILEVAULT, LID, RESTING and CONSOLE break one each.
+# at the screen. Stand-ins print what macOS prints; FILEVAULT, LID, RESTING and PLACE_MACHINE break one
+# check each, and CONSOLE sets which user is at the screen.
 # shellcheck source=tests/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 export HOME="$T/home" HR_NAME=builder DEV_HOME="$T/home/Dev/github.com"
