@@ -21,17 +21,18 @@ fi
 
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 cd "$PL"
+# The gate guard needs the no-mistakes remote, which a fresh clone lacks. init
+# makes it (and repairs it when it is there), so it runs first, every time.
+no-mistakes init
 sh scripts/install-gate-guard.sh
 sh ios/Tools/make_gate_simulator.sh
 sh ios/Tools/gate_unit_tests.sh
 
-# Trial nightly into a scratch results folder, so the real one is untouched.
-if [ -f ios/Tools/nightly.sh ]; then
-  scratch="$(mktemp -d)"
-  PL_NIGHTLY_HOME="$scratch" sh ios/Tools/nightly.sh
-  grep -q '^passed ' "$scratch"/* \
-    || die "the trial nightly did not write 'passed <commit>' in $scratch"
-  say "trial nightly passed"
-else
-  warn "PraiseLineup has no ios/Tools/nightly.sh here; the trial nightly was not run"
-fi
+# Trial nightly: the real one, into a scratch results folder so the real one is
+# untouched, and --no-post so no issue or notification is written. A full run
+# takes up to six hours; it writes latest/result only when every stage ran.
+scratch="$(mktemp -d)"
+PL_NIGHTLY_HOME="$scratch" sh ios/Tools/nightly_ui_tests.sh --no-post
+grep -q '^passed ' "$scratch/latest/result" \
+  || die "the trial nightly did not write 'passed <commit>' in $scratch/latest/result"
+say "trial nightly passed"

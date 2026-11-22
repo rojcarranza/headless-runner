@@ -7,7 +7,6 @@
 # shellcheck source=lib/clone.sh
 . "$HR_ROOT/lib/clone.sh"
 require_apple_silicon_mac
-export PATH="/run/current-system/sw/bin:/opt/homebrew/bin:$PATH"
 command -v runner-up > /dev/null || die "runner-up is missing; run bash setup.sh machine first"
 
 if ! gh auth status > /dev/null 2>&1; then
@@ -24,13 +23,14 @@ if [ "$HOME_CLONE" != "$HR_ROOT" ]; then
   mkdir -p "$HOME_CLONE/machines" "$HOME_CLONE/keys"
   cp -n "$HR_ROOT"/machines/*.json "$HOME_CLONE/machines/" 2> /dev/null || true
   cp -n "$HR_ROOT"/keys/*.pub "$HOME_CLONE/keys/" 2> /dev/null || true
-  cp -n "$HR_ROOT/machine/flake.lock" "$HOME_CLONE/machine/flake.lock" 2> /dev/null || true
 fi
 say "this repository is also at $HOME_CLONE; use it from now on"
 
 CFG="$HOME/Library/Application Support/runner-up/config.json"
-if [ ! -f "$CFG" ]; then
-  runner-up init --repo rojcarranza/headless-runner --pool "$HR_NAME"
+[ -f "$CFG" ] || runner-up init --repo rojcarranza/headless-runner --pool "$HR_NAME"
+# A rerun after init but before machine add (or a failed add) finishes the job:
+# the machine is looked up by name, not assumed from the file.
+if ! jq -e --arg n "$HR_NAME" '.machines[]? | select(.name == $n)' "$CFG" > /dev/null 2>&1; then
   # No --ssh: the machine is this one. A host place runs one job at a time,
   # as this user, in this user's session.
   runner-up machine add "$HR_NAME" --provider host --pool "$HR_NAME"

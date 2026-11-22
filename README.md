@@ -16,8 +16,8 @@ It is built on two projects by Kun Chen, which carry most of the knowledge:
 
 Kun's write-up of the approach (a small bootstrap, then nix-darwin with
 declarative Homebrew, owned small Macs as CI runners, fixed job slots) is the
-reason the setup is layered this way. Versions are in `pins.env` and
-`machine/flake.lock`.
+reason the setup is layered this way. Versions are in `pins.env` (headless, Xcode) and
+`machine/flake.nix` with `machine/flake.lock` (runner-up, no-mistakes).
 
 ## Run it
 
@@ -47,7 +47,7 @@ skipped. The stages, in order:
 | `machine` | headless: Nix, FileVault off, auto sign-in, never asleep (lid closed too), key-only SSH, Tailscale, the shared CI tools | Approve the Tailscale page it opens; turn off key expiry for the computer in Tailscale's admin page |
 | `xcode` | Xcode from the App Store (27.1 or later), license, first launch, iOS platform, the iPhone 18 Pro and iPad Pro 11-inch (M5) simulators. Device Hub is part of Xcode | Sign in to the App Store |
 | `runner-up` | Installs runner-up as a login agent with one host place on this Mac; makes this repository a clone at `~/Dev/github.com/rojcarranza/headless-runner` | Sign in to GitHub (`gh` shows a code) |
-| `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles, makes the gate simulator, runs the gate unit tests and a trial nightly | Nothing |
+| `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles, links the review gate (`no-mistakes init`), makes the gate simulator, runs the gate unit tests and a trial nightly (the real nightly with `--no-post`, into a scratch folder; up to six hours) | Nothing |
 | `restart` | Restarts once; the Mac signs itself back in and `verify.sh` runs by itself, with a notification | Nothing |
 
 Other forms: `bash setup.sh STAGE` runs one stage again, `bash setup.sh --no-restart`
@@ -78,6 +78,16 @@ background"). runner-up and the nightly run in that same signed-in session.
   still answer for the new user.
 - Unproven: iOS simulator UI tests may stall while another user has the screen.
   If the check above shows that, the nightly needs the new user at the screen.
+
+## Running an app'"'"'s own GitHub Actions jobs here
+
+runner-up serves only this repository until you add another. To let an app's
+workflows run on this Mac: add the app's `owner/repo` to `github.repos` in
+`~/Library/Application Support/runner-up/config.json` (a running runner-up
+applies the edit), then ask for this Mac in the workflow with
+`runs-on: <the computer's name>`, which is the new user's short name and
+runner-up's pool. Check it with `runner-up check-config`. Each job runs as the
+new user, in its session (see Security notes).
 
 ## Adding an app
 

@@ -29,21 +29,33 @@ stub runner-up 'echo "place builder  online"'
 stub pgrep 'echo 123'
 stub stat 'echo "${CONSOLE-builder}"'
 stub osascript 'exit 0'
+# headless's own read-back, as the pinned clone holds it; FILEVAULT=on breaks one line.
+HV="$DEV_HOME/kunchenguid/headless/skills/headless/scripts/mac/remote/verify.sh"
+mkdir -p "$(dirname "$HV")" "$T/rancher" "$HOME/Library/LaunchAgents"
+printf '#!/bin/sh\necho "ok    sshd key-only drop-in"\nif [ "${FILEVAULT-off}" = on ]; then echo "FAIL  FileVault off (needed for automatic sign-in) (found true, want false)"; else echo "ok    FileVault off (needed for automatic sign-in)"; fi\n' > "$HV"
+export HR_RANCHER_APP="$T/rancher"
 export PATH="$T/bin:$PATH"
 ln -sf "$(command -v jq)" "$T/bin/jq" 2> /dev/null || true
 
 out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 0 "a healthy Mac passes"
 assert_contains "$out" "all checks passed" "the summary says so"
-assert_contains "$out" "ok    FileVault is off" "each check is one line"
+assert_contains "$out" "ok    FileVault off" "each check is one line, headless's own lines among them"
 assert_contains "$out" "switched-user check skipped" "at the screen: the switched-user check says it is skipped"
 
 out="$(FILEVAULT=on "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 1 "FileVault on fails the run"
-assert_contains "$out" "FAIL  FileVault is off" "and names the line"
+assert_contains "$out" "FAIL  FileVault off" "and names the line"
 
 out="$(CONSOLE=guest "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 0 "another user at the screen still passes"
 assert_contains "$out" "ok    another user (guest) is at the screen" "and the switched-user check runs"
 assert_contains "$out" "ok    work still runs here" "runner-up and the simulator answer in this session"
+# After a restart the login agent must go: its file is deleted before the agent
+# is stopped, because stopping the agent ends the script.
+PLIST="$HOME/Library/LaunchAgents/com.headless-runner.verify.plist"
+stub launchctl "[ \"\$1\" = bootout ] && { [ -e '$PLIST' ] && echo file-still-there > '$T/order' || echo file-gone > '$T/order'; }; exit 0"
+: > "$PLIST"
+"$ROOT/verify.sh" --after-restart > /dev/null 2>&1
+assert_eq "$(cat "$T/order" 2> /dev/null)" "file-gone" "the login agent's file is deleted before the agent is stopped"
 done_tests

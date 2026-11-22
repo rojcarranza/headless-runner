@@ -11,4 +11,7 @@ if "$ROOT/scripts/scan-secrets.sh" "$T/planted" > /dev/null 2>&1; then fail "a p
 mkdir -p "$T/planted2"
 printf 'password = "hunter2hunter2"\n' > "$T/planted2/x"
 if "$ROOT/scripts/scan-secrets.sh" "$T/planted2" > /dev/null 2>&1; then fail "a planted password is missed"; else pass "a planted password is caught"; fi
+mkdir -p "$T/planted3"
+printf 'DB_PASSWORD = "hunter2hunter2"\n' > "$T/planted3/x"
+if "$ROOT/scripts/scan-secrets.sh" "$T/planted3" > /dev/null 2>&1; then fail "an upper-case password name is missed"; else pass "an upper-case password name is caught"; fi
 done_tests

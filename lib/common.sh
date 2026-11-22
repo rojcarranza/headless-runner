@@ -24,7 +24,8 @@ warn() { printf 'headless-runner: warning: %s\n' "$*" >&2; }
 die() { printf 'headless-runner: %s\n' "$*" >&2; exit 1; }
 
 # need_password: the account password is asked once by setup.sh. A stage run
-# on its own asks here, hidden, and keeps it only in memory.
+# on its own asks here, hidden, and keeps it only in memory. It is a plain
+# shell variable, never exported: setup.sh hands it only to the stages that use it.
 need_password() {
   [ -z "${HR_PASSWORD-}" ] || return 0
   [ -t 0 ] || die "no password: run bash setup.sh from Terminal so it can ask for it"
@@ -32,7 +33,6 @@ need_password() {
   IFS= read -rs HR_PASSWORD
   printf '\n' >&2
   [ -n "$HR_PASSWORD" ] || die "empty password"
-  export HR_PASSWORD
 }
 
 # as_root COMMAND...: run COMMAND with sudo, the password piped to sudo -S

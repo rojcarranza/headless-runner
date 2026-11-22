@@ -3,7 +3,6 @@
 # shellcheck source=lib/common.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 require_apple_silicon_mac
-export PATH="/run/current-system/sw/bin:/opt/homebrew/bin:$PATH"
 for p in "$HR_ROOT"/projects/*.sh; do
   [ -f "$p" ] || continue
   say "project: $(basename "$p" .sh)"

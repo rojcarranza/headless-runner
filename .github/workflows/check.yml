@@ -13,4 +13,4 @@ jobs:
     runs-on: ${{ inputs.computer }}
     steps:
       - uses: actions/checkout@v4
-      - run: ./verify.sh --ci
+      - run: ./verify.sh

@@ -5,7 +5,6 @@
 . "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 require_apple_silicon_mac
 need_password
-export PATH="/opt/homebrew/bin:$PATH"
 command -v mas > /dev/null || die "mas is missing; run bash setup.sh machine first"
 
 if [ ! -d /Applications/Xcode.app ]; then

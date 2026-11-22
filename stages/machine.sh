@@ -25,17 +25,16 @@ if [ ! -x /opt/homebrew/bin/brew ]; then
 fi
 
 assemble_config "$HR_CONFIG"
-# HR_PASSWORD reaches headless through its "cmd:" secret store, by environment.
-export HR_PASSWORD
-"$S/connect.sh" "$HR_CONFIG"
-"$S/admin.sh" "$HR_CONFIG"
-"$S/apply.sh" "$HR_CONFIG"
-# apply.sh writes flake.lock the first time; keep it beside the machine files.
-[ -f "$HR_ROOT/machine/flake.lock" ] || cp "$HR_CONFIG/flake.lock" "$HR_ROOT/machine/flake.lock"
+# HR_PASSWORD reaches headless through its "cmd:" secret store, by environment,
+# for the headless scripts only.
+with_password() { HR_PASSWORD="$HR_PASSWORD" "$@"; }
+with_password "$S/connect.sh" "$HR_CONFIG"
+with_password "$S/admin.sh" "$HR_CONFIG"
+with_password "$S/apply.sh" "$HR_CONFIG"
 
 # Tailscale: headless prints a sign-in link; the page is yours to approve.
-out="$("$S/tailscale.sh" "$HR_CONFIG" 2>&1 | tee /dev/stderr)"
+out="$(with_password "$S/tailscale.sh" "$HR_CONFIG" 2>&1 | tee /dev/stderr)"
 link="$(printf '%s\n' "$out" | grep -Eo 'https://[^ ]+' | head -n 1 || true)"
 [ -z "$link" ] || open_page "$link"
-"$S/tailscale.sh" "$HR_CONFIG" --wait
+with_password "$S/tailscale.sh" "$HR_CONFIG" --wait
 say "Tailscale is connected. In the Tailscale admin page, turn off key expiry for $HR_NAME so it never drops off the tailnet"

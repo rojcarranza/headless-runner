@@ -31,7 +31,7 @@ assemble_config() {
   local dir="$1"
   mkdir -p "$dir"
   cp "$HR_ROOT/machine/flake.nix" "$HR_ROOT/machine/machine.nix" "$dir/"
-  [ ! -f "$HR_ROOT/machine/flake.lock" ] || cp "$HR_ROOT/machine/flake.lock" "$dir/"
+  cp "$HR_ROOT/machine/flake.lock" "$dir/"
   cp "$HR_ROOT/machines/$HR_NAME.json" "$dir/settings.json"
   cat > "$dir/headless.env" <<ENV
 # How headless reaches this Mac: itself, by SSH. No secret is stored here.

@@ -15,7 +15,7 @@ patterns=(
 )
 found=0
 for p in "${patterns[@]}"; do
-  if grep -rEn --exclude-dir=.git --exclude-dir=node_modules --exclude=scan-secrets.sh --exclude='*.test.sh' -e "$p" "$root"; then
+  if grep -rEin --exclude-dir=.git --exclude-dir=node_modules --exclude=scan-secrets.sh --exclude='*.test.sh' -e "$p" "$root"; then
     found=1
   fi
 done

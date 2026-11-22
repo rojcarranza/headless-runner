@@ -15,13 +15,20 @@
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
 STAGES=(account machine xcode runner-up projects restart)
+# Only these stages use the password; the others (runner-up, projects) run
+# PraiseLineup's scripts and the nightly, and never see it.
+PASSWORD_STAGES=" account machine xcode restart "
 
 usage() { sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 run_stage() {
   local s="$1"
   say "== stage: $s"
-  bash "$HR_ROOT/stages/$s.sh"
+  if [[ "$PASSWORD_STAGES" == *" $s "* ]]; then
+    HR_PASSWORD="$HR_PASSWORD" bash "$HR_ROOT/stages/$s.sh"
+  else
+    env -u HR_PASSWORD bash "$HR_ROOT/stages/$s.sh"
+  fi
   # The restart stage ends the run; the others mark themselves done here.
   [ "$s" = restart ] || stage_mark "$s"
 }
