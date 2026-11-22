@@ -8,11 +8,11 @@ It is built on two projects by Kun Chen, which carry most of the knowledge:
 
 - [headless](https://github.com/kunchenguid/headless) puts a Mac in an
   unattended state over SSH: never asleep, signs itself in after a restart,
-  SSH by key only, Tailscale. Pinned at `e9168b7`.
+  SSH by key only, Tailscale.
 - [runner-up](https://github.com/kunchenguid/runner-up) takes GitHub Actions
-  jobs and runs them on your own machines. Pinned at `v0.1.13`.
+  jobs and runs them on your own machines.
 - [no-mistakes](https://github.com/kunchenguid/no-mistakes), the pre-push check
-  tool, at `v1.111.0` (the version the dotfiles pin).
+  tool, the version the dotfiles pin.
 
 Kun's write-up of the approach (a small bootstrap, then nix-darwin with
 declarative Homebrew, owned small Macs as CI runners, fixed job slots) is the
@@ -44,7 +44,7 @@ skipped. The stages, in order:
 | Stage | What runs | What only you do |
 | --- | --- | --- |
 | `account` | Checks admin and secure token, turns on Remote Login, makes the user's SSH key and `~/Dev/github.com` | Paste the public key of the computer that will add this one in Infinitary (once) |
-| `machine` | headless: Nix, FileVault off, auto sign-in, never asleep (lid closed too), key-only SSH, Tailscale, the shared CI tools, and a Rancher Desktop defaults profile so its first-run window never stops a nightly | Approve the Tailscale page it opens; turn off key expiry for the computer in Tailscale's admin page |
+| `machine` | headless: Nix, FileVault off, auto sign-in, never asleep (lid closed too), key-only SSH, Tailscale, the shared CI tools, and a Rancher Desktop defaults profile; it opens Rancher Desktop once so Docker exists | Approve the Tailscale page it opens; click Open in macOS's window when Rancher Desktop first starts; turn off key expiry for the computer in Tailscale's admin page |
 | `xcode` | Xcode from the App Store (27.1 or later), license, first launch, iOS platform, the iPhone 18 Pro and iPad Pro 11-inch (M5) simulators. Device Hub is part of Xcode | Sign in to the App Store |
 | `runner-up` | Installs runner-up as a login agent with one host place on this Mac; makes this repository a clone at `~/Dev/github.com/rojcarranza/headless-runner` | Sign in to GitHub (`gh` shows a code) |
 | `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles, links the review gate (`no-mistakes init`), makes the gate simulator, runs the gate unit tests and a trial nightly (the real nightly with `--no-post`, into a scratch folder; up to six hours) | Nothing |

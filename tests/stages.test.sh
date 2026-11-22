@@ -56,4 +56,14 @@ P="$HOME/Library/Preferences/io.rancherdesktop.profile.defaults.plist"
 assert_eq "$(python3 -I -c 'import plistlib,sys; d=plistlib.load(open(sys.argv[1],"rb")); print(d["version"], d["containerEngine"]["name"], d["kubernetes"]["enabled"])' "$P")" "10 moby False" "the profile parses and sets version, engine and no Kubernetes"
 echo marker > "$P"; ensure_rancher_profile > /dev/null
 assert_eq "$(cat "$P")" marker "an existing profile is left alone"
+# --- Rancher Desktop is opened once, in view, and Docker is awaited
+stub sleep 'exit 0'
+stub open 'echo "open $*" >> "$LOG"; mkdir -p "$HOME/.rd/bin"; printf "#!/bin/sh\\nexit 0\\n" > "$HOME/.rd/bin/docker"; chmod +x "$HOME/.rd/bin/docker"'
+: > "$LOG"; rm -rf "$HOME/.rd"
+start_rancher_desktop > /dev/null 2>&1
+assert_eq "$(cat "$LOG")" "open -a Rancher Desktop" "a clean Mac: Rancher Desktop is opened once and Docker then answers"
+: > "$LOG"; start_rancher_desktop > /dev/null 2>&1
+assert_eq "$(cat "$LOG")" "" "when Docker already answers, nothing is opened"
+stub open 'exit 0'; rm -rf "$HOME/.rd"
+(start_rancher_desktop) > /dev/null 2>&1 && fail "Docker never answering stops the stage" || pass "Docker never answering stops the stage"
 done_tests

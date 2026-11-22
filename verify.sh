@@ -33,13 +33,16 @@ headless_checks() {
   n="$(grep -c '^FAIL' <<< "$out")"
   if [ "$n" = 0 ] && ! grep -q '^ok' <<< "$out"; then bad "headless's verify.sh printed no result"; else fails=$((fails + n)); fi
 }
-# runner-up status prints "place ID on MACHINE (host, N cores, M MB) STATE" for
-# each place, and also "waiting ..." lines for queued jobs. Only this Mac's place
-# lines count, and none of them may be resting.
 # Called directly (not inside bash -c, whose own arguments would match pgrep -f).
 work_runs_here() {
   pgrep -u "$(id -u)" -f 'runner-up serve' > /dev/null && xcrun simctl list devices available > /dev/null
 }
+xcode_is_new_enough() {
+  version_ge "$(xcodebuild -version | awk '/^Xcode/ { print $2; exit }')" "$XCODE_MIN"
+}
+# runner-up status prints "place ID on MACHINE (host, N cores, M MB) STATE" for
+# each place, and also "waiting ..." lines for queued jobs. Only this Mac's place
+# lines count, and none of them may be resting.
 runner_up_place_ok() {
   local lines
   lines="$(runner-up status 2> /dev/null | grep -E "^[[:space:]]*place .* on ${HR_NAME} \(")"
@@ -53,7 +56,7 @@ check "Remote Login is on" nc -z 127.0.0.1 22
 headless_checks
 # headless checks sleep and disksleep only; the lid-closed setting is this repository's.
 check "awake with the lid closed (pmset disablesleep)" bash -c "pmset -g | grep -Eq 'SleepDisabled[[:space:]]+1'"
-check "Xcode $XCODE_MIN or later selected" bash -c "v=\$(xcodebuild -version | awk '/^Xcode/ { print \$2; exit }'); [ \"\$(printf '%s\n%s\n' '$XCODE_MIN' \"\$v\" | sort -V | head -n 1)\" = '$XCODE_MIN' ]"
+check "Xcode $XCODE_MIN or later selected" xcode_is_new_enough
 check "Xcode license accepted" xcodebuild -checkFirstLaunchStatus
 check "iOS 27 runtime installed" bash -c "xcrun simctl list runtimes available | grep -q 'iOS 27'"
 check "iPhone 18 Pro simulator" bash -c "xcrun simctl list devices available | grep -q '^ *iPhone 18 Pro ('"

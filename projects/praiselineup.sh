@@ -35,4 +35,5 @@ scratch="$(mktemp -d)"
 PL_NIGHTLY_HOME="$scratch" sh ios/Tools/nightly_ui_tests.sh --no-post
 grep -q '^passed ' "$scratch/latest/result" \
   || die "the trial nightly did not write 'passed <commit>' in $scratch/latest/result"
+rm -rf "$scratch"
 say "trial nightly passed"

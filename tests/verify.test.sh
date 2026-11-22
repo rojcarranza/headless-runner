@@ -5,10 +5,9 @@
 # at the screen. Stand-ins print what macOS prints; HEALTHY=0 breaks one.
 # shellcheck source=tests/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
-export HOME="$T/home" HR_NAME=builder DEV_HOME="$T/home/Dev/github.com" HR_SETTINGS="$T/settings.json"
+export HOME="$T/home" HR_NAME=builder DEV_HOME="$T/home/Dev/github.com"
 export HR_STATE="$T/state"
 mkdir -p "$HOME" "$DEV_HOME/rojcarranza/headless-runner/.git" "$T/bin"
-jq -n '{keyOnlySsh:true,autoLogin:true,user:"builder"}' > "$HR_SETTINGS"
 echo 'export DEV_HOME="'"$DEV_HOME"'"' > "$HOME/.zprofile"
 
 stub() { printf '#!/bin/sh\n%s\n' "$2" > "$T/bin/$1"; chmod +x "$T/bin/$1"; }
@@ -16,13 +15,9 @@ stub uname '[ "$1" = -m ] && echo arm64 || echo Darwin'
 stub id 'case "$1" in -Gn) echo "staff admin everyone" ;; -u) echo 501 ;; *) echo builder ;; esac'
 stub sysadminctl 'echo "2026-11-22 sysadminctl[1:2] Secure token is ENABLED for user builder" >&2'
 stub nc 'exit 0'
-stub defaults 'echo builder'
-stub fdesetup 'if [ "${FILEVAULT-off}" = on ]; then echo "FileVault is On."; else echo "FileVault is Off."; fi'
 stub pmset 'printf " SleepDisabled\t\t${LID-1}\n"'
-stub tailscale 'echo "{\"BackendState\": \"Running\"}"'
 stub xcodebuild 'case "$1" in -version) printf "Xcode 27.1\nBuild version 27A100\n" ;; esac'
 stub xcrun 'case "$*" in "simctl list runtimes available") echo "iOS 27.1 (27.1 - 27A5000) - com.apple.CoreSimulator.SimRuntime.iOS-27-1" ;; "simctl list devices available") printf "== Devices ==\n-- iOS 27.1 --\n    iPhone 18 Pro (AAAAAAAA-0000-0000-0000-000000000001) (Shutdown)\n    iPad Pro 11-inch (M5) (AAAAAAAA-0000-0000-0000-000000000002) (Shutdown)\n" ;; esac'
-stub docker 'exit 0'
 stub git 'exit 0'; stub gh 'exit 0'; stub python3 'exit 0'; stub no-mistakes 'exit 0'
 stub launchctl 'exit 0'
 # runner-up's real status lines; RESTING=1 rests the place and a job waits on the pool.

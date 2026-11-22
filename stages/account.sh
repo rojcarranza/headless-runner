@@ -33,7 +33,7 @@ if ! nc -z 127.0.0.1 22 2> /dev/null; then
 fi
 say "Remote Login is on"
 
-# This user's own SSH key: the Mac reaches itself with it (headless, runner-up).
+# This user's own SSH key: the Mac reaches itself with it (headless's scripts).
 mkdir -p "$HOME/.ssh"
 chmod 0700 "$HOME/.ssh"
 [ -f "$HOME/.ssh/id_ed25519" ] || ssh-keygen -q -t ed25519 -N '' -C "$HR_NAME@headless-runner" -f "$HOME/.ssh/id_ed25519"

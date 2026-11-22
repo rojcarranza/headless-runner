@@ -37,6 +37,7 @@ with_password "$S/admin.sh" "$HR_CONFIG"
 with_password "$S/apply.sh" "$HR_CONFIG"
 
 ensure_rancher_profile
+start_rancher_desktop
 
 # Tailscale: headless prints a sign-in link; the page is yours to approve.
 out="$(with_password "$S/tailscale.sh" "$HR_CONFIG" 2>&1 | tee /dev/stderr)"

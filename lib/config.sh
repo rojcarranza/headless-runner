@@ -6,8 +6,8 @@ KEY_FILE="${KEY_FILE:-$HOME/.ssh/id_ed25519}"
 
 # ensure_machine_file: machines/<name>.json, made once. It holds the user,
 # the host name, the public keys allowed in by SSH and the sign-in choice -
-# no secret. The keys are this user's own key (the Mac reaches itself with it
-# for runner-up) and every public key in keys/.
+# no secret. The keys are this user's own key (headless's scripts reach this Mac
+# at 127.0.0.1 with it) and every public key in keys/.
 ensure_machine_file() {
   local file="$HR_ROOT/machines/$HR_NAME.json" keys="" k
   [ ! -f "$file" ] || return 0
@@ -48,7 +48,26 @@ ENV
 # closes it, when it has no settings file and no deployment profile. A defaults
 # profile skips that window, so the nightly's local server can start Docker with
 # nobody at the screen. Settings: the Docker engine (moby), no Kubernetes.
-# "version" is Rancher Desktop's settings version (10 at the time of writing).
+# "version" is the settings version the profile is written at (10); Rancher
+# Desktop migrates an older profile to its own current version on first open.
+# start_rancher_desktop: Rancher Desktop makes its docker command (~/.rd/bin/docker)
+# only the first time it starts, and PraiseLineup's local server stops without it.
+# Opened in view, once, while a person is at the screen: macOS asks them to click
+# Open the first time an app installed by Homebrew starts. Waits up to 5 minutes
+# for Docker to answer.
+start_rancher_desktop() {
+  local docker="$HOME/.rd/bin/docker" tries=0
+  [ -x "$docker" ] && "$docker" info > /dev/null 2>&1 && return 0
+  say "opening Rancher Desktop once; if macOS asks, click Open in its window"
+  open -a "Rancher Desktop" || die "could not open Rancher Desktop; open it from Applications, then run bash setup.sh machine again"
+  until [ -x "$docker" ] && "$docker" info > /dev/null 2>&1; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 60 ] || die "Docker did not answer from Rancher Desktop; finish its window, then run bash setup.sh machine again"
+    sleep 5
+  done
+  say "Docker answers"
+}
+
 ensure_rancher_profile() {
   local profile="$HOME/Library/Preferences/io.rancherdesktop.profile.defaults.plist"
   [ ! -e "$profile" ] || return 0
