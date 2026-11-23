@@ -48,6 +48,14 @@ runner_up_place_ok() {
   lines="$(runner-up status 2> /dev/null | grep -E "^[[:space:]]*place .* on ${HR_NAME} \(")"
   [ -n "$lines" ] && ! grep -qi resting <<< "$lines"
 }
+# A non-interactive SSH command, by key against the host key headless pinned,
+# the way headless's own scripts sign in here: its zsh reads only ~/.zshenv,
+# so claude answers by name only through the claude-code stage's PATH line.
+claude_over_ssh() {
+  ssh -o "UserKnownHostsFile=\"$HR_CONFIG/known_hosts\"" -o StrictHostKeyChecking=yes \
+    -o IdentitiesOnly=yes -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o ConnectTimeout=15 \
+    "$HR_NAME@127.0.0.1" claude --version
+}
 
 [ "$(uname -s)" = Darwin ] || { bad "this is a Mac"; exit 1; }
 check "admin user $HR_NAME" bash -c "id -Gn | tr ' ' '\n' | grep -qx admin"
@@ -63,6 +71,8 @@ check "iPhone 18 Pro simulator" bash -c "xcrun simctl list devices available | g
 check "iPad Pro 11-inch (M5) simulator" bash -c "xcrun simctl list devices available | grep -q '^ *iPad Pro 11-inch (M5) ('"
 check "Rancher Desktop is installed" test -d "${HR_RANCHER_APP:-/Applications/Rancher Desktop.app}"
 for t in git gh python3 no-mistakes; do check "$t is present" command -v "$t"; done
+check "Claude Code is installed at ~/.local/bin/claude" "$HOME/.local/bin/claude" --version
+check "claude runs by name in a non-interactive SSH command" claude_over_ssh
 check "DEV_HOME is set to $DEV_HOME in ~/.zprofile" grep -qxF "export DEV_HOME=\"$DEV_HOME\"" "$HOME/.zprofile"
 # Every clone sits at ~/Dev/github.com/<owner>/<repo>.
 check "this repository is at $DEV_HOME/rojcarranza/headless-runner" test -d "$DEV_HOME/rojcarranza/headless-runner/.git"

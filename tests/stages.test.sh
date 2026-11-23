@@ -2,7 +2,9 @@
 # shellcheck disable=SC2015,SC2016,SC2034 # pass/fail helpers never fail; stand-ins are single-quoted on purpose
 # Intent (the review of PR #2): a clean Mac must get through the projects stage
 # (the gate guard needs no-mistakes init first), and a rerun of the runner-up
-# stage after a failed "machine add" must finish adding the machine.
+# stage after a failed "machine add" must finish adding the machine. Intent
+# (the captain): the claude-code stage installs Claude Code, and claude then
+# answers by name in a non-interactive SSH command.
 # shellcheck source=tests/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 export HOME="$T/home" HR_NAME=builder DEV_HOME="$T/home/Dev/github.com" HR_STATE="$T/state" LOG="$T/log"
@@ -66,4 +68,53 @@ assert_eq "$(cat "$LOG")" "open -a Rancher Desktop" "a clean Mac: Rancher Deskto
 assert_eq "$(cat "$LOG")" "" "when Docker already answers, nothing is opened"
 stub open 'exit 0'; rm -rf "$HOME/.rd"
 (start_rancher_desktop) > /dev/null 2>&1 && fail "Docker never answering stops the stage" || pass "Docker never answering stops the stage"
+
+# --- claude-code (the captain): a Mac set up by these scripts gets Claude Code,
+# and claude answers by name in a non-interactive SSH command
+V=2.1.330 # the version Anthropic's installer installed when this test was written
+{ echo 'echo "Setting up Claude Code..."'; declare -f install_claude_native
+  printf 'install_claude_native "$HOME" %s\necho "Installation complete!"\n' "$V"; } > "$T/install.sh"
+# An installer that put claude where Infinitary does not look.
+printf 'mkdir -p "$HOME/.claude/local"; printf "#!/bin/sh\\necho %s\\n" > "$HOME/.claude/local/claude"; chmod +x "$HOME/.claude/local/claude"\n' "$V" > "$T/install-elsewhere.sh"
+stub curl 'echo "curl $*" >> "$LOG"
+[ -z "${CURL_FAIL-}" ] || { echo "curl: (6) Could not resolve host: claude.ai" >&2; exit 6; }
+[ "$*" = "-fsSL https://claude.ai/install.sh" ] && cat "${INSTALLER:-'"$T"'/install.sh}"'
+stand_in_ssh "$T/bin"
+HR_ZSH="$(command -v zsh)"; export HR_ZSH
+set +e # common.sh, sourced above, turned set -e on; every result here is asserted
+cc() { bash "$ROOT/stages/claude-code.sh" > "$T/out" 2>&1; }
+line='export PATH="$HOME/.local/bin:$PATH"'
+
+: > "$LOG"; rm -rf "$HOME/.local" "$HOME/.zshenv"
+cc; rc=$?
+assert_eq "$rc" 0 "a Mac without Claude Code gets through the claude-code stage"
+assert_eq "$(cat "$LOG")" "curl -fsSL https://claude.ai/install.sh" "Anthropic's native installer is fetched once"
+assert_eq "$("$HOME/.local/bin/claude" --version)" "$V (Claude Code)" "claude is at ~/.local/bin/claude, where Infinitary looks"
+assert_eq "$(ssh builder@127.0.0.1 claude --version 2>&1)" "$V (Claude Code)" "a non-interactive ssh claude --version answers by name"
+assert_contains "$(cat "$T/out")" "Claude Code $V runs by name in SSH commands" "the stage says which version it checked"
+
+cp "$HOME/.zshenv" "$T/zshenv"; : > "$LOG"
+cc; rc=$?
+assert_eq "$rc" 0 "a second run passes"
+assert_eq "$(cat "$LOG")" "" "and installs nothing again"
+cmp -s "$HOME/.zshenv" "$T/zshenv" && pass "and leaves ~/.zshenv as it was" || fail "a second run changed ~/.zshenv"
+
+printf 'export EDITOR=nvim' > "$HOME/.zshenv"
+cc
+assert_eq "$(head -n 1 "$HOME/.zshenv")" "export EDITOR=nvim" "a ~/.zshenv's own lines stay, the last one whole"
+assert_eq "$(grep -cxF "$line" "$HOME/.zshenv")" 1 "and the PATH line is added once"
+
+printf '%s\n' "$line" > "$HOME/.zshenv"; cp "$HOME/.zshenv" "$T/zshenv"
+cc
+cmp -s "$HOME/.zshenv" "$T/zshenv" && pass "a ~/.zshenv that has the installer's line already (set by hand) is left alone" || fail "a hand-set ~/.zshenv was changed"
+
+printf 'export PATH=/usr/bin:/bin\n' >> "$HOME/.zshenv"
+cc && fail "a ~/.zshenv that drops ~/.local/bin again fails the stage" || pass "a ~/.zshenv that drops ~/.local/bin again fails the stage"
+assert_contains "$(cat "$T/out")" "claude does not run by name in a non-interactive shell" "and says so"
+
+rm -rf "$HOME/.local" "$HOME/.zshenv"
+CURL_FAIL=1 cc && fail "an installer that cannot be fetched stops the stage" || pass "an installer that cannot be fetched stops the stage"
+assert_contains "$(cat "$T/out")" "Claude Code did not install" "and says so"
+INSTALLER="$T/install-elsewhere.sh" cc && fail "claude installed outside ~/.local/bin stops the stage" || pass "claude installed outside ~/.local/bin stops the stage"
+assert_contains "$(cat "$T/out")" "where Infinitary looks for it" "and says why"
 done_tests

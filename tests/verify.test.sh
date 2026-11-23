@@ -3,7 +3,8 @@
 # Intent (the captain): verify.sh reads every setting back, reports one line
 # per check, changes nothing, and also reports the case where another user is
 # at the screen. Stand-ins print what macOS prints; FILEVAULT, LID, RESTING and PLACE_MACHINE break one
-# check each, and CONSOLE sets which user is at the screen.
+# check each, and CONSOLE sets which user is at the screen. Intent (the
+# captain): verify.sh also checks claude --version in a non-interactive SSH command.
 # shellcheck source=tests/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 export HOME="$T/home" HR_NAME=builder DEV_HOME="$T/home/Dev/github.com"
@@ -32,6 +33,10 @@ HV="$DEV_HOME/kunchenguid/headless/skills/headless/scripts/mac/verify.sh"
 mkdir -p "$(dirname "$HV")" "$T/rancher" "$HOME/Library/LaunchAgents"
 printf '#!/bin/sh\necho "ok    read with $1"\necho "ok    password sign-in refused (key only)"\nif [ "${FILEVAULT-off}" = on ]; then echo "FAIL  FileVault off (needed for automatic sign-in) (found true, want false)"; else echo "ok    FileVault off (needed for automatic sign-in)"; fi\n' > "$HV"
 export HR_RANCHER_APP="$T/rancher"
+# Claude Code as the claude-code stage leaves it, and SSH commands run as sshd runs them.
+install_claude_native "$HOME" 2.1.330
+printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' > "$HOME/.zshenv"
+stand_in_ssh "$T/bin"
 export PATH="$T/bin:$PATH"
 
 out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
@@ -59,6 +64,16 @@ assert_eq "$rc" 1 "no runner-up place for this computer fails the run, a waiting
 out="$(LID=0 "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 1 "a Mac that sleeps when the lid closes fails the run"
 assert_contains "$out" "FAIL  awake with the lid closed" "and names the line"
+
+# claude found only by its full path is what stopped Infinitary from finding it.
+mv "$HOME/.zshenv" "$T/zshenv"
+out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "claude that SSH commands cannot run by name fails the run"
+assert_contains "$out" "FAIL  claude runs by name in a non-interactive SSH command" "and names the line"
+mv "$T/zshenv" "$HOME/.zshenv"
+mv "$HOME/.local" "$T/local"
+assert_contains "$("$ROOT/verify.sh" 2>&1)" "FAIL  Claude Code is installed at ~/.local/bin/claude" "no Claude Code fails its line"
+mv "$T/local" "$HOME/.local"
 
 # The switched-user check must fail when the coordinator is not running.
 stub pgrep 'exit 1'

@@ -5,8 +5,8 @@
 # stopped when you run it again.
 #
 #   bash setup.sh            run every stage that is not done yet
-#   bash setup.sh STAGE         run one stage again (account, machine, xcode,
-#                            runner-up, projects, restart)
+#   bash setup.sh STAGE         run one stage again (account, machine,
+#                            claude-code, xcode, runner-up, projects, restart)
 #   bash setup.sh --no-restart  everything except the final restart
 #   bash setup.sh --list        show the stages and which are done
 #
@@ -14,9 +14,10 @@
 # shellcheck source=lib/common.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
-STAGES=(account machine xcode runner-up projects restart)
-# Only these stages use the password; the others (runner-up, projects) run
-# PraiseLineup's scripts and the nightly, and never see it.
+STAGES=(account machine claude-code xcode runner-up projects restart)
+# Only these stages use the password; the others (claude-code, runner-up,
+# projects) never see it: runner-up and projects run PraiseLineup's scripts
+# and the nightly.
 PASSWORD_STAGES=" account machine xcode restart "
 
 usage() { sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }

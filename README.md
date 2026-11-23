@@ -18,6 +18,7 @@ Kun's write-up of the approach (a small bootstrap, then nix-darwin with
 declarative Homebrew, owned small Macs as CI runners, fixed job slots) is the
 reason the setup is layered this way. Versions are in `machine/flake.nix` with
 `machine/flake.lock` (headless, runner-up, no-mistakes) and `pins.env` (Xcode).
+Claude Code is left unpinned: Anthropic's native build keeps itself up to date.
 
 ## Run it
 
@@ -45,6 +46,7 @@ skipped. The stages, in order:
 | --- | --- | --- |
 | `account` | Checks admin and secure token, turns on Remote Login, makes the user's SSH key and `~/Dev/github.com` | Paste the public key of the computer that will add this one in Infinitary (once) |
 | `machine` | headless: Nix, FileVault off, auto sign-in, never asleep (lid closed too), key-only SSH, Tailscale, the shared CI tools, and a Rancher Desktop defaults profile; it opens Rancher Desktop once so Docker exists | Approve the Tailscale page it opens; click Open in macOS's window when Rancher Desktop first starts; turn off key expiry for the computer in Tailscale's admin page |
+| `claude-code` | Claude Code, which Infinitary runs its work with, from Anthropic's native installer at `~/.local/bin/claude`; puts that folder on PATH in `~/.zshenv`, the only profile a non-interactive SSH command reads, and checks that `claude --version` answers there by name | Nothing now; you sign it in to Claude later, through Infinitary's setup card |
 | `xcode` | Xcode from the App Store (27.1 or later), license, first launch, iOS platform, the iPhone 18 Pro and iPad Pro 11-inch (M5) simulators. Device Hub is part of Xcode | Sign in to the App Store |
 | `runner-up` | Installs runner-up as a login agent with one host place on this Mac; makes this repository a clone at `~/Dev/github.com/rojcarranza/headless-runner` | Sign in to GitHub (`gh` shows a code) |
 | `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles, links the review gate (`no-mistakes init`), makes the gate simulator, runs the gate unit tests and a trial nightly (the real nightly with `--no-post`, into a scratch folder; up to six hours) | Nothing |
@@ -56,7 +58,8 @@ every setting back and changes nothing.
 
 Last, on the computer where the first mate lives, add the new computer in
 Infinitary by its Tailscale name (Infinitary's `docs/devices.md`). Infinitary
-sends its own copy to the new computer, so nothing of it is installed here. Then
+sends its own copy to the new computer, so nothing of it is installed here; it
+brings no Claude Code, which is why the `claude-code` stage installs it. Then
 sign it in to Claude and GitHub through its setup card.
 
 ## Where projects live
@@ -99,24 +102,29 @@ checks need.
 
 - Run `bash setup.sh` again any time; every stage is safe to repeat. A second Mac
   needs no code change: sign in there as its own administrator and run it.
+- A Mac set up before a stage was added (such as `claude-code`) gets it with
+  `git pull` in its clone, then `bash setup.sh`: only the stages not done yet run.
 - `machines/<name>.json` holds one computer's public settings (user, host name,
   public SSH keys, auto sign-in). Edit it, then `bash setup.sh machine`.
 - Undo: turn off auto sign-in in `machines/<name>.json` (`"autoLogin": false`)
   and run `bash setup.sh machine`; stop runner-up with
   `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.github.runner-up.plist`;
-  remove headless with its nix-darwin uninstaller. Delete the user in System
-  Settings to remove everything it owns.
+  remove headless with its nix-darwin uninstaller; remove Claude Code with
+  `rm -rf ~/.local/bin/claude ~/.local/share/claude` and the PATH line it
+  added to `~/.zshenv`. Delete the user in System Settings to remove everything
+  it owns.
 
 ## Checks
 
 `./scripts/check.sh` is the gate: `bash -n`, shellcheck, a secret scan, the
 script tests in `tests/` and the flake evaluating for an Apple silicon Mac. It
-runs on Linux or a Mac and spends no GitHub Actions minutes.
+runs on Linux (with zsh) or a Mac and spends no GitHub Actions minutes.
 
 What the checks cannot prove (they run on Linux with stand-ins for macOS
 commands): that headless, Xcode, Homebrew, launchd and `systemsetup` behave on
-the Air as the scripts expect, and that Rancher Desktop opens on its first start
-(macOS may ask for one click) and then makes its `docker` command. Only a run of `bash setup.sh` on the Air and its
+the Air as the scripts expect, that Anthropic's installer and macOS's own SSH
+and zsh do what the `claude-code` stage expects, and that Rancher Desktop opens
+on its first start (macOS may ask for one click) and then makes its `docker` command. Only a run of `bash setup.sh` on the Air and its
 `verify.sh` prove that. The manual workflow `.github/workflows/check.yml` runs
 `verify.sh` on a named computer through runner-up.
 
