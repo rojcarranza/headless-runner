@@ -82,6 +82,7 @@ check "runner-up login agent is loaded" launchctl print "gui/$(id -u)/com.github
 check "runner-up coordinator is running" pgrep -u "$(id -u)" -f 'runner-up serve'
 check "runner-up has a place on $HR_NAME and it is not resting" runner_up_place_ok
 check "GitHub sign-in works (runner-up needs it)" gh auth status
+check "GitHub accepts this Mac's SSH key (clones with SSH addresses work)" github_greets
 
 # With another user at the screen, this user's session must keep working.
 console="$(stat -f%Su /dev/console 2> /dev/null)"

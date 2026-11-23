@@ -37,6 +37,9 @@ export HR_RANCHER_APP="$T/rancher"
 install_claude_native "$HOME" 2.1.330
 printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"' > "$HOME/.zshenv"
 stand_in_ssh "$T/bin"
+# GitHub answers git@github.com with its greeting (and exit 1) while the key is on the account (GH_KEY=none: refused).
+mv "$T/bin/ssh" "$T/bin/ssh-host"
+printf '#!/bin/sh\ncase "$*" in\n  *git@github.com*) [ "${GH_KEY-ok}" = ok ] && { echo "Hi octo! You'"'"'ve successfully authenticated, but GitHub does not provide shell access."; exit 1; }; echo "Permission denied (publickey)." >&2; exit 255 ;;\nesac\nexec "$(dirname "$0")/ssh-host" "$@"\n' > "$T/bin/ssh"; chmod +x "$T/bin/ssh"
 export PATH="$T/bin:$PATH"
 
 out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
@@ -88,4 +91,8 @@ stub launchctl "[ \"\$1\" = bootout ] && { [ -e '$PLIST' ] && echo file-still-th
 : > "$PLIST"
 "$ROOT/verify.sh" --after-restart > /dev/null 2>&1
 assert_eq "$(cat "$T/order" 2> /dev/null)" "file-gone" "the login agent's file is deleted before the agent is stopped"
+out="$(GH_KEY=none "$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "a GitHub that refuses this Mac's SSH key fails the run"
+assert_contains "$out" "FAIL  GitHub accepts this Mac's SSH key" "and names the line"
+assert_contains "$("$ROOT/verify.sh" 2>&1)" "ok    GitHub accepts this Mac's SSH key" "a healthy Mac's SSH greeting passes its line"
 done_tests

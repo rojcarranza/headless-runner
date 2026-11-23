@@ -49,6 +49,7 @@ skipped. The stages, in order:
 | `claude-code` | Claude Code, which Infinitary runs its work with, from Anthropic's native installer at `~/.local/bin/claude`; puts that folder on PATH in `~/.zshenv`, the only profile a non-interactive SSH command reads, and checks that `claude --version` answers there by name | Nothing now; you sign it in to Claude later, through Infinitary's setup card |
 | `xcode` | Xcode from the App Store (27.1 or later), license, first launch, iOS platform, the iPhone 18 Pro and iPad Pro 11-inch (M5) simulators. Device Hub is part of Xcode | Sign in to the App Store |
 | `runner-up` | Installs runner-up as a login agent with one host place on this Mac; makes this repository a clone at `~/Dev/github.com/rojcarranza/headless-runner` | Sign in to GitHub (`gh` shows a code) |
+| `github` | Adds GitHub's published SSH host keys to `~/.ssh/known_hosts`; if GitHub does not already greet this Mac's SSH key, copies the key and opens GitHub's new-key page, then checks that `ssh -T git@github.com` greets you, so projects with SSH addresses clone. The Mac gets no permission to manage your account | Paste the key on GitHub's page (title: the computer's name), press Add SSH key, then Return |
 | `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles, links the review gate (`no-mistakes init`), makes the gate simulator, runs the gate unit tests and a trial nightly (the real nightly with `--no-post`, into a scratch folder; up to six hours) | Nothing |
 | `restart` | Restarts once; the Mac signs itself back in and `verify.sh` runs by itself, with a notification | Nothing |
 
@@ -111,7 +112,7 @@ checks need.
   `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.github.runner-up.plist`;
   remove headless with its nix-darwin uninstaller; remove Claude Code with
   `rm -rf ~/.local/bin/claude ~/.local/share/claude` and the PATH line it
-  added to `~/.zshenv`. Delete the user in System Settings to remove everything
+  added to `~/.zshenv`. To take the key back, delete it by this Mac's name on GitHub's SSH keys page and remove the `github.com` lines from `~/.ssh/known_hosts`. Delete the user in System Settings to remove everything
   it owns.
 
 ## Checks
@@ -124,7 +125,7 @@ What the checks cannot prove (they run on Linux with stand-ins for macOS
 commands): that headless, Xcode, Homebrew, launchd and `systemsetup` behave on
 the Air as the scripts expect, that Anthropic's installer and macOS's own SSH
 and zsh do what the `claude-code` stage expects, and that Rancher Desktop opens
-on its first start (macOS may ask for one click) and then makes its `docker` command. Only a run of `bash setup.sh` on the Air and its
+on its first start (macOS may ask for one click) and then makes its `docker` command, and that GitHub greets this Mac's SSH key in the `github` stage. Only a run of `bash setup.sh` on the Air and its
 `verify.sh` prove that. The manual workflow `.github/workflows/check.yml` runs
 `verify.sh` on a named computer through runner-up.
 
@@ -135,5 +136,6 @@ on its first start (macOS may ask for one click) and then makes its `docker` com
 - FileVault is turned off and auto sign-in is on, so the Mac works after any
   restart; anyone holding the Air can read every account's files on it.
 - SSH takes keys only; only the keys in `keys/` and the user's own key get in.
+- This Mac's SSH key, once on your GitHub account, reads and writes every repository the account can reach; any runner-up job running as this user can use it.
 - runner-up's host place runs a job as the new user, in its session: jobs can
   reach that user's files and saved passwords. Use it only for jobs you trust.
