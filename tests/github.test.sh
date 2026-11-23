@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015,SC2016,SC2034 # pass/fail helpers never fail; stand-ins are single-quoted on purpose
 # Intent (the captain): setup adds GitHub's host keys to known_hosts and gets
-# the computer's SSH key onto their GitHub account, with their yes, so a fresh
+# the computer's SSH key onto their GitHub account (the person adds it on
+# GitHub's page; the Mac gets no permission to manage keys), so a fresh
 # worker can clone projects with SSH addresses.
 # shellcheck source=tests/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -17,7 +18,7 @@ k1="$(awk '{print $1, $2}' "$T/hk/a.pub")"; k2="$(awk '{print $1, $2}' "$T/hk/b.
 jq -n --arg a "$k1" --arg b "$k2" '{ssh_keys: [$a, $b]}' > "$T/meta.json"
 export HR_GITHUB_META="$T/meta.json"
 stub curl '[ -z "${CURL_FAIL-}" ] || exit 6; cat "${2:?}"'
-# gh: signed in with repo and workflow only, so it cannot list keys (as runner-up leaves it); the account's keys are in $T/account; add and refresh are logged.
+# gh: signed in with repo and workflow only (as runner-up leaves it); the account's keys are in $T/account. It must never be needed.
 stub gh 'echo "gh $*" >> "$LOG"
 case "$1 $2" in
   "auth status") exit 0 ;;
@@ -45,29 +46,31 @@ assert_eq "$(grep '^github.com ' "$KH" | sed 's/^github.com //' | sort)" "$(prin
 assert_eq "$(ssh-keygen -F github.com -f "$KH" | grep -c '^# Host')" 2 "ssh-keygen finds them"
 printf '{"ssh_keys":[]}' > "$T/empty.json"; HR_GITHUB_META="$T/empty.json" stage && fail "an answer without keys stops the stage" || pass "an answer without keys stops the stage"
 
-# --- the yes
-: > "$LOG"; echo n > "$T/tty"; stage
-assert_eq "$(grep -c 'ssh-key add' "$LOG")" 0 "answering no adds nothing"
-assert_contains "$(cat "$T/out")" "not adding the key" "and says what that means"
-: > "$LOG"; rm -f "$HR_TTY"; stage && fail "no terminal means no yes" || pass "no terminal means no yes"
-assert_eq "$(grep -c 'ssh-key add' "$LOG")" 0 "and nothing is added silently"
-: > "$LOG"; echo y > "$T/tty"; stage; rc=$?
-assert_eq "$rc" 0 "yes: the stage passes"
-assert_eq "$(grep -c '^gh ssh-key add' "$LOG")" 1 "the key is added once"
-assert_contains "$(cat "$LOG")" "gh ssh-key add $HOME/.ssh/id_ed25519.pub --title builder --type authentication" "with the Mac's public key and the computer's name as title"
-assert_contains "$(cat "$LOG")" "gh auth refresh --hostname github.com --scopes admin:public_key" "after asking GitHub for permission to add keys"
+# --- the key is added on GitHub's page, by the person
+# open: the person adds the key on GitHub when the page opens (ADD=0: they do not).
+stub open 'echo "open $*" >> "$LOG"; [ "${ADD-1}" = 0 ] || awk "{print \$1, \$2}" "$HOME/.ssh/id_ed25519.pub" >> "$T/account"'
+stub pbcopy 'cat > "$T/clipboard"'
+: > "$LOG"; : > "$T/account"; echo > "$T/tty"; stage; rc=$?
+assert_eq "$rc" 0 "a Mac GitHub does not know: the person adds the key on GitHub and the stage passes"
+assert_contains "$(cat "$LOG")" "open https://github.com/settings/ssh/new" "GitHub's new-key page is opened"
+assert_eq "$(cat "$T/clipboard")" "$(cat "$HOME/.ssh/id_ed25519.pub")" "with the Mac's public key copied"
 assert_contains "$(cat "$T/out")" "SSH to GitHub works" "and GitHub's greeting is checked"
+assert_not_contains "$(cat "$LOG")" "gh " "gh is never used: the Mac gets no permission to manage keys"
 assert_eq "$(grep -c 'github.com ' "$KH")" 2 "a rerun adds no host key twice"
 : > "$LOG"; rm -f "$HR_TTY"; stage; rc=$?
-assert_eq "$rc" 0 "key already on the account: no question, the stage passes"
-assert_eq "$(grep -c '^gh ' "$LOG")" 0 "and gh is not used at all"
-stub gh 'echo "gh $*" >> "$LOG"; exit 1'
-stage; rc=$?
-assert_eq "$rc" 0 "an invalid gh sign-in does not stop a Mac whose SSH already works"
+assert_eq "$rc" 0 "key already known to GitHub: no question, the stage passes"
+assert_eq "$(grep -c '^open \|^gh ' "$LOG")" 0 "and nothing is opened or added"
 assert_contains "$(grep '^ssh ' "$LOG" | head -n 1)" "StrictHostKeyChecking=yes" "the check trusts only known_hosts"
+# gh is not even needed: a broken sign-in changes nothing
+stub gh 'echo "gh $*" >> "$LOG"; exit 1'
+: > "$LOG"; stage; rc=$?
+assert_eq "$rc" 0 "an invalid gh sign-in does not stop a Mac whose SSH already works"
+assert_eq "$(grep -c '^gh ' "$LOG")" 0 "and gh is not called"
 
-# --- GitHub refusing the key
-: > "$T/account"; echo y > "$T/tty"; stub gh 'case "$1 $2" in "auth status") exit 0 ;; "api --paginate") exit 1 ;; esac'
-stage && fail "a key GitHub does not accept stops the stage" || pass "a key GitHub does not accept stops the stage"
+# --- the person does not add it, or there is no one to ask
+: > "$T/account"; echo > "$T/tty"
+ADD=0 stage && fail "pressing Return without adding the key stops the stage" || pass "pressing Return without adding the key stops the stage"
 assert_contains "$(cat "$T/out")" "Permission denied" "and shows what GitHub said"
+rm -f "$HR_TTY"; stage && fail "no terminal stops the stage" || pass "no terminal stops the stage"
+assert_contains "$(cat "$T/out")" "no terminal to wait on" "and says why"
 done_tests

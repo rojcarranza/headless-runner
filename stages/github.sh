@@ -3,7 +3,8 @@
 # (git@github.com:owner/repo.git), which is how Infinitary clones them. Three
 # steps: GitHub's published host keys go in ~/.ssh/known_hosts (so no one has
 # to trust a host by hand), and if GitHub does not already greet this Mac's key
-# by name, the key goes on your GitHub account once you say yes. ssh -T checks.
+# by name, you add the key on GitHub's own page (the Mac is given no permission
+# to manage your account) and ssh -T checks that GitHub then greets it.
 # shellcheck source=lib/common.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 require_apple_silicon_mac
@@ -34,25 +35,20 @@ if github_greets "${pub%.pub}"; then
   exit 0
 fi
 
-# 3. This Mac's key on your GitHub account, with your yes.
-gh auth status > /dev/null 2>&1 || die "GitHub is not signed in; run bash setup.sh runner-up first"
-say "This Mac's SSH key is not on your GitHub account yet. Adding it lets this Mac"
-say "read and write every repository your account can, as you do with your own key."
-printf 'Add it to your GitHub account now, titled "%s"? [y/N] ' "$HR_NAME" >&2
-answer=""
-# Asked on the terminal, never on a pipe: no terminal means no yes.
-IFS= read -r answer < "${HR_TTY:-/dev/tty}" 2> /dev/null || { printf '\n' >&2; die "no terminal to ask on; run bash setup.sh github in Terminal"; }
-case "$answer" in
-  y | Y | yes | Yes) ;;
-  *) die "not adding the key; the Mac cannot clone with SSH addresses until it is on your GitHub account. Run bash setup.sh github again when you want it" ;;
-esac
-gh auth refresh --hostname github.com --scopes admin:public_key \
-  || die "GitHub did not grant permission to add keys; run bash setup.sh github again"
-gh ssh-key add "$pub" --title "$HR_NAME" --type authentication \
-  || die "GitHub did not accept the key; run bash setup.sh github again"
-say "added this Mac's SSH key to your GitHub account as $HR_NAME"
+# 3. Not greeted: you add the key on GitHub's own page. This Mac never gets
+# permission to manage your account's keys; your click on GitHub is the yes.
+say "GitHub does not know this Mac's SSH key yet. Add it on GitHub's page:"
+say "  1. the key is copied (or shown below); paste it into the Key box"
+say "  2. type the title $HR_NAME and keep the type Authentication Key"
+say "  3. press Add SSH key, then come back here and press Return"
+if command -v pbcopy > /dev/null 2>&1; then pbcopy < "$pub" || true; fi
+cat "$pub" >&2
+open_page "https://github.com/settings/ssh/new"
+printf 'Press Return once GitHub shows the key added: ' >&2
+# Asked on the terminal, never on a pipe: no terminal means no way to wait.
+IFS= read -r _ < "${HR_TTY:-/dev/tty}" 2> /dev/null || { printf '\n' >&2; die "no terminal to wait on; run bash setup.sh github in Terminal"; }
 
 # 4. GitHub must now greet you by name.
 github_greets "${pub%.pub}" \
-  || die "GitHub did not accept this Mac's SSH key (it said: $GITHUB_SAID); run bash setup.sh github again"
+  || die "GitHub did not accept this Mac's SSH key (it said: $GITHUB_SAID); add the key on GitHub's page, then run bash setup.sh github again"
 say "${GITHUB_SAID%%!*}! SSH to GitHub works"
