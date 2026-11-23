@@ -18,6 +18,7 @@ The README explains how a person runs them; this file says how to change them.
   `nix flake lock path:$PWD/machine`.
 - The gate is `./scripts/check.sh`: `bash -n`, shellcheck, the secret scan, the
   script tests in `tests/` (stand-ins print what macOS prints) and the machine
-  flake evaluating for `aarch64-darwin`. It runs on Linux. What only a run on a
-  real Mac proves is listed in the README under "What the checks cannot prove".
+  flake evaluating for `aarch64-darwin`. It runs on Linux (with zsh). What only
+  a run on a real Mac proves is listed in the README under "What the checks
+  cannot prove".
 - Pull requests go through the no-mistakes gate, like the rest of this setup.
