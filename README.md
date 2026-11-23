@@ -50,7 +50,7 @@ skipped. The stages, in order:
 | `xcode` | Xcode from the App Store (27.1 or later), license, first launch, iOS platform, the iPhone 18 Pro and iPad Pro 11-inch (M5) simulators. Device Hub is part of Xcode | Sign in to the App Store |
 | `runner-up` | Installs runner-up as a login agent with one host place on this Mac; makes this repository a clone at `~/Dev/github.com/rojcarranza/headless-runner` | Sign in to GitHub (`gh` shows a code) |
 | `github` | Adds GitHub's published SSH host keys to `~/.ssh/known_hosts`; if GitHub does not already greet this Mac's SSH key, copies the key and opens GitHub's new-key page, then checks that `ssh -T git@github.com` greets you, so projects with SSH addresses clone. The Mac gets no permission to manage your account | Paste the key on GitHub's page (title: the computer's name), press Add SSH key, then Return |
-| `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles, links the review gate (`no-mistakes init`), makes the gate simulator, runs the gate unit tests and a trial nightly (the real nightly with `--no-post`, into a scratch folder; up to six hours) | Nothing |
+| `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles (a clone already there on a clean `main` is first brought up to date with GitHub, fast-forward only), links the review gate (`no-mistakes init`), makes the gate simulator, runs the gate unit tests and a trial nightly (the real nightly with `--no-post`, into a scratch folder; up to six hours) | Nothing |
 | `restart` | Restarts once; the Mac signs itself back in and `verify.sh` runs by itself, with a notification | Nothing |
 
 Other forms: `bash setup.sh STAGE` runs one stage again, `bash setup.sh --no-restart`
@@ -68,6 +68,13 @@ sign it in to Claude and GitHub through its setup card.
 Every computer keeps projects at `~/Dev/github.com/<owner>/<repo>`, and
 `DEV_HOME` points at `~/Dev/github.com`. Scripts clone only through
 `lib/clone.sh`. Infinitary's own task working copies stay in Infinitary's folder.
+
+A project script clones with `clone_latest`, so running the `projects` stage
+again tries GitHub's newest `main`: a clone already there on its default
+branch with no uncommitted changes is fetched and fast-forwarded first. A
+clone on another branch, or with uncommitted changes, is left as it is and
+the stage warns that its checks run that version. A `main` with commits
+GitHub's lacks, or a fetch that fails, stops the stage.
 
 ## Keeping work running while you use another account
 
@@ -96,7 +103,7 @@ new user, in its session (see Security notes).
 ## Adding an app
 
 One script per app in `projects/`, run by the `projects` stage. Start from
-`projects/praiselineup.sh`: clone through `lib/clone.sh`, then make what its
+`projects/praiselineup.sh`: clone with `clone_latest` from `lib/clone.sh`, then make what its
 checks need.
 
 ## Running it again, changing it, undoing it
