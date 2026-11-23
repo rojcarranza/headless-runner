@@ -18,13 +18,8 @@ k1="$(awk '{print $1, $2}' "$T/hk/a.pub")"; k2="$(awk '{print $1, $2}' "$T/hk/b.
 jq -n --arg a "$k1" --arg b "$k2" '{ssh_keys: [$a, $b]}' > "$T/meta.json"
 export HR_GITHUB_META="$T/meta.json"
 stub curl '[ -z "${CURL_FAIL-}" ] || exit 6; cat "${2:?}"'
-# gh: signed in with repo and workflow only (as runner-up leaves it); the account's keys are in $T/account. It must never be needed.
-stub gh 'echo "gh $*" >> "$LOG"
-case "$1 $2" in
-  "auth status") exit 0 ;;
-  "api --paginate") echo "HTTP 404: Not Found (needs read:public_key)" >&2; exit 1 ;;
-  "ssh-key add") awk "{print \$1, \$2}" "$3" >> "$T/account" ;;
-esac'
+# gh: the stage must never call it (the Mac gets no permission to manage keys); a call is logged and fails.
+stub gh 'echo "gh $*" >> "$LOG"; exit 1'
 # ssh: GitHub greets only when the account holds the key and known_hosts has a host key.
 stub ssh 'echo "ssh $*" >> "$LOG"
 grep -qxF "$(awk "{print \$1, \$2}" "$HOME/.ssh/id_ed25519.pub")" "$T/account" && grep -q "^github.com " "$HOME/.ssh/known_hosts" \
@@ -61,8 +56,7 @@ assert_eq "$(grep -c 'github.com ' "$KH")" 2 "a rerun adds no host key twice"
 assert_eq "$rc" 0 "key already known to GitHub: no question, the stage passes"
 assert_eq "$(grep -c '^open \|^gh ' "$LOG")" 0 "and nothing is opened or added"
 assert_contains "$(grep '^ssh ' "$LOG" | head -n 1)" "StrictHostKeyChecking=yes" "the check trusts only known_hosts"
-# gh is not even needed: a broken sign-in changes nothing
-stub gh 'echo "gh $*" >> "$LOG"; exit 1'
+# gh is not needed: a broken sign-in changes nothing
 : > "$LOG"; stage; rc=$?
 assert_eq "$rc" 0 "an invalid gh sign-in does not stop a Mac whose SSH already works"
 assert_eq "$(grep -c '^gh ' "$LOG")" 0 "and gh is not called"
