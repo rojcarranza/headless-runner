@@ -12,12 +12,12 @@ export PATH="$T/bin:$PATH"
 
 # The repository's scripts with each stage replaced by one that records itself.
 mkdir -p "$T/r"; (cd "$ROOT" && tar -cf - setup.sh pins.env lib stages) | tar -xf - -C "$T/r"
-for s in account machine claude-code xcode runner-up projects restart; do
+for s in account machine claude-code xcode runner-up github projects restart; do
   printf '#!/bin/sh\necho %s >> "$LOG"\n[ -z "${HR_PASSWORD-}" ] || echo %s >> "$LOGPW"\n[ "${STUB_FAIL-}" = %s ] && exit 1\nexit 0\n' "$s" "$s" "$s" > "$T/r/stages/$s.sh"
 done
 run() { : > "$LOG"; : > "$LOGPW"; "$T/r/setup.sh" "$@" 2>&1; }
 
-out="$(run)"; assert_eq "$(tr '\n' ' ' < "$LOG")" "account machine claude-code xcode runner-up projects restart " "stages run in order"
+out="$(run)"; assert_eq "$(tr '\n' ' ' < "$LOG")" "account machine claude-code xcode runner-up github projects restart " "stages run in order"
 assert_not_contains "$out" "$HR_PASSWORD" "the password is never printed"
 assert_eq "$(tr '\n' ' ' < "$LOGPW")" "account machine xcode restart " "only the stages that use the password receive it"
 run > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "restart " "a second run skips every finished stage"
@@ -25,10 +25,10 @@ run > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "restart " "a second run sk
 rm -rf "$HOME/.headless-runner"
 STUB_FAIL=xcode run > /dev/null && fail "a failing stage stops the run" || pass "a failing stage stops the run"
 assert_eq "$(tr '\n' ' ' < "$LOG")" "account machine claude-code xcode " "nothing runs after the failure"
-run > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "xcode runner-up projects restart " "a rerun resumes at the failed stage"
+run > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "xcode runner-up github projects restart " "a rerun resumes at the failed stage"
 
 rm -rf "$HOME/.headless-runner"
-run --no-restart > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "account machine claude-code xcode runner-up projects " "--no-restart leaves the restart out"
+run --no-restart > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "account machine claude-code xcode runner-up github projects " "--no-restart leaves the restart out"
 run xcode > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "xcode " "naming a stage runs only it, again"
 run nonsense > /dev/null && fail "an unknown stage is refused" || pass "an unknown stage is refused"
 
@@ -36,6 +36,12 @@ run nonsense > /dev/null && fail "an unknown stage is refused" || pass "an unkno
 # it with one more run after a git pull. Its other stages are done, so only the
 # new one runs.
 rm -rf "$HOME/.headless-runner"; mkdir -p "$HOME/.headless-runner/done"
-for s in account machine xcode runner-up projects restart; do : > "$HOME/.headless-runner/done/$s"; done
+for s in account machine xcode runner-up github projects restart; do : > "$HOME/.headless-runner/done/$s"; done
 run > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "claude-code " "a Mac set up before the claude-code stage gets only that stage on its next run"
+
+# Intent (the captain): a Mac set up before the github stage existed gets it
+# with one more run, and nothing else.
+rm -rf "$HOME/.headless-runner"; mkdir -p "$HOME/.headless-runner/done"
+for s in account machine claude-code xcode runner-up projects restart; do : > "$HOME/.headless-runner/done/$s"; done
+run > /dev/null; assert_eq "$(tr '\n' ' ' < "$LOG")" "github " "a Mac set up before the github stage gets only that stage on its next run"
 done_tests

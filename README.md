@@ -49,6 +49,7 @@ skipped. The stages, in order:
 | `claude-code` | Claude Code, which Infinitary runs its work with, from Anthropic's native installer at `~/.local/bin/claude`; puts that folder on PATH in `~/.zshenv`, the only profile a non-interactive SSH command reads, and checks that `claude --version` answers there by name | Nothing now; you sign it in to Claude later, through Infinitary's setup card |
 | `xcode` | Xcode from the App Store (27.1 or later), license, first launch, iOS platform, the iPhone 18 Pro and iPad Pro 11-inch (M5) simulators. Device Hub is part of Xcode | Sign in to the App Store |
 | `runner-up` | Installs runner-up as a login agent with one host place on this Mac; makes this repository a clone at `~/Dev/github.com/rojcarranza/headless-runner` | Sign in to GitHub (`gh` shows a code) |
+| `github` | Adds GitHub's published SSH host keys to `~/.ssh/known_hosts`, puts this Mac's SSH key on your GitHub account (after you answer yes), and checks that `ssh -T git@github.com` greets you, so projects with SSH addresses clone | Answer yes to adding the key; approve the extra GitHub permission (`admin:public_key`) `gh` asks for with a code |
 | `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles, links the review gate (`no-mistakes init`), makes the gate simulator, runs the gate unit tests and a trial nightly (the real nightly with `--no-post`, into a scratch folder; up to six hours) | Nothing |
 | `restart` | Restarts once; the Mac signs itself back in and `verify.sh` runs by itself, with a notification | Nothing |
 
@@ -111,7 +112,7 @@ checks need.
   `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.github.runner-up.plist`;
   remove headless with its nix-darwin uninstaller; remove Claude Code with
   `rm -rf ~/.local/bin/claude ~/.local/share/claude` and the PATH line it
-  added to `~/.zshenv`. Delete the user in System Settings to remove everything
+  added to `~/.zshenv`. To take the key back, delete it by this Mac's name on GitHub's SSH keys page and remove the `github.com` lines from `~/.ssh/known_hosts`. Delete the user in System Settings to remove everything
   it owns.
 
 ## Checks

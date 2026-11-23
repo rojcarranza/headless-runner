@@ -6,7 +6,8 @@
 #
 #   bash setup.sh            run every stage that is not done yet
 #   bash setup.sh STAGE         run one stage again (account, machine,
-#                            claude-code, xcode, runner-up, projects, restart)
+#                            claude-code, xcode, runner-up, github, projects,
+#                            restart)
 #   bash setup.sh --no-restart  everything except the final restart
 #   bash setup.sh --list        show the stages and which are done
 #
@@ -14,9 +15,9 @@
 # shellcheck source=lib/common.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
-STAGES=(account machine claude-code xcode runner-up projects restart)
+STAGES=(account machine claude-code xcode runner-up github projects restart)
 # Only these stages use the password; the others (claude-code, runner-up,
-# projects) never see it: runner-up and projects run PraiseLineup's scripts
+# github, projects) never see it: runner-up and projects run PraiseLineup's scripts
 # and the nightly.
 PASSWORD_STAGES=" account machine xcode restart "
 
