@@ -62,3 +62,12 @@ require_apple_silicon_mac() {
   [ "$(uname -s)" = Darwin ] || die "this runs on a Mac; this computer is $(uname -s)"
   [ "$(uname -m)" = arm64 ] || die "this needs an Apple silicon Mac; this one is $(uname -m)"
 }
+
+# github_greets [KEY]: GitHub greets this Mac's SSH key by name, checked
+# against known_hosts. ssh -T exits 1 even when GitHub greets you, so its words
+# are read, not its status. What it said stays in GITHUB_SAID.
+github_greets() {
+  GITHUB_SAID="$(ssh -T -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes \
+    -o ConnectTimeout=15 -i "${1:-$HOME/.ssh/id_ed25519}" git@github.com 2>&1 || true)"
+  grep -q 'successfully authenticated' <<< "$GITHUB_SAID"
+}

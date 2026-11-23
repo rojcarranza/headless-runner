@@ -2,8 +2,8 @@
 # Stage github: this Mac can clone projects with SSH addresses
 # (git@github.com:owner/repo.git), which is how Infinitary clones them. Three
 # steps: GitHub's published host keys go in ~/.ssh/known_hosts (so no one has
-# to trust a host by hand), this Mac's SSH key goes on your GitHub account
-# once you say yes, and ssh -T checks that GitHub greets you by name.
+# to trust a host by hand), and if GitHub does not already greet this Mac's key
+# by name, the key goes on your GitHub account once you say yes. ssh -T checks.
 # shellcheck source=lib/common.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 require_apple_silicon_mac
@@ -26,41 +26,33 @@ while IFS= read -r key; do
 done <<< "$host_keys"
 say "GitHub's host keys are in ~/.ssh/known_hosts ($added added)"
 
-# 2. This Mac's key on your GitHub account, with your yes.
+# 2. Already greeted by name (the key is on the account): nothing to ask.
 pub="$HOME/.ssh/id_ed25519.pub"
 [ -f "$pub" ] || die "no SSH key at $pub; run bash setup.sh account first"
-material="$(awk '{ print $1, $2 }' "$pub")"
-gh auth status > /dev/null 2>&1 || die "GitHub is not signed in; run bash setup.sh runner-up first"
-on_account() {
-  local keys
-  keys="$(gh api --paginate user/keys --jq '.[].key' 2> /dev/null)" || return 1
-  # Keys carry a trailing comment on some accounts; compare type and material only.
-  awk '{ print $1, $2 }' <<< "$keys" | grep -qxF "$material"
-}
-if on_account; then
-  say "this Mac's SSH key is already on your GitHub account"
-else
-  say "This Mac's SSH key is not on your GitHub account yet. Adding it lets this Mac"
-  say "read and write every repository your account can, as you do with your own key."
-  printf 'Add it to your GitHub account now, titled "%s"? [y/N] ' "$HR_NAME" >&2
-  answer=""
-  # Asked on the terminal, never on a pipe: no terminal means no yes.
-  IFS= read -r answer < "${HR_TTY:-/dev/tty}" 2> /dev/null || { printf '\n' >&2; die "no terminal to ask on; run bash setup.sh github in Terminal"; }
-  case "$answer" in
-    y | Y | yes | Yes) ;;
-    *) die "not adding the key; the Mac cannot clone with SSH addresses until it is on your GitHub account. Run bash setup.sh github again when you want it" ;;
-  esac
-  gh auth refresh --hostname github.com --scopes admin:public_key \
-    || die "GitHub did not grant permission to add keys; run bash setup.sh github again"
-  gh ssh-key add "$pub" --title "$HR_NAME" --type authentication \
-    || die "GitHub did not accept the key; run bash setup.sh github again"
-  say "added this Mac's SSH key to your GitHub account as $HR_NAME"
+if github_greets "${pub%.pub}"; then
+  say "${GITHUB_SAID%%!*}! this Mac's SSH key is already on your GitHub account"
+  exit 0
 fi
 
-# 3. GitHub must greet you by name. ssh -T exits 1 even on success, so read
-# what it says, with the host key checked against known_hosts.
-greeting="$(ssh -T -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes \
-  -o ConnectTimeout=15 -i "${pub%.pub}" git@github.com 2>&1 || true)"
-grep -q 'successfully authenticated' <<< "$greeting" \
-  || die "GitHub did not accept this Mac's SSH key (it said: $greeting); run bash setup.sh github again"
-say "${greeting%%!*}! SSH to GitHub works"
+# 3. This Mac's key on your GitHub account, with your yes.
+gh auth status > /dev/null 2>&1 || die "GitHub is not signed in; run bash setup.sh runner-up first"
+say "This Mac's SSH key is not on your GitHub account yet. Adding it lets this Mac"
+say "read and write every repository your account can, as you do with your own key."
+printf 'Add it to your GitHub account now, titled "%s"? [y/N] ' "$HR_NAME" >&2
+answer=""
+# Asked on the terminal, never on a pipe: no terminal means no yes.
+IFS= read -r answer < "${HR_TTY:-/dev/tty}" 2> /dev/null || { printf '\n' >&2; die "no terminal to ask on; run bash setup.sh github in Terminal"; }
+case "$answer" in
+  y | Y | yes | Yes) ;;
+  *) die "not adding the key; the Mac cannot clone with SSH addresses until it is on your GitHub account. Run bash setup.sh github again when you want it" ;;
+esac
+gh auth refresh --hostname github.com --scopes admin:public_key \
+  || die "GitHub did not grant permission to add keys; run bash setup.sh github again"
+gh ssh-key add "$pub" --title "$HR_NAME" --type authentication \
+  || die "GitHub did not accept the key; run bash setup.sh github again"
+say "added this Mac's SSH key to your GitHub account as $HR_NAME"
+
+# 4. GitHub must now greet you by name.
+github_greets "${pub%.pub}" \
+  || die "GitHub did not accept this Mac's SSH key (it said: $GITHUB_SAID); run bash setup.sh github again"
+say "${GITHUB_SAID%%!*}! SSH to GitHub works"

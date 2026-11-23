@@ -21,7 +21,7 @@ STAGES=(account machine claude-code xcode runner-up github projects restart)
 # and the nightly.
 PASSWORD_STAGES=" account machine xcode restart "
 
-usage() { sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 run_stage() {
   local s="$1"

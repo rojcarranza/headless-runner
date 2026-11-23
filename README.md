@@ -125,7 +125,7 @@ What the checks cannot prove (they run on Linux with stand-ins for macOS
 commands): that headless, Xcode, Homebrew, launchd and `systemsetup` behave on
 the Air as the scripts expect, that Anthropic's installer and macOS's own SSH
 and zsh do what the `claude-code` stage expects, and that Rancher Desktop opens
-on its first start (macOS may ask for one click) and then makes its `docker` command. Only a run of `bash setup.sh` on the Air and its
+on its first start (macOS may ask for one click) and then makes its `docker` command, and that the `github` stage's real parts work: `gh` granting and using the key permission and GitHub greeting this Mac's SSH key. Only a run of `bash setup.sh` on the Air and its
 `verify.sh` prove that. The manual workflow `.github/workflows/check.yml` runs
 `verify.sh` on a named computer through runner-up.
 
@@ -136,5 +136,6 @@ on its first start (macOS may ask for one click) and then makes its `docker` com
 - FileVault is turned off and auto sign-in is on, so the Mac works after any
   restart; anyone holding the Air can read every account's files on it.
 - SSH takes keys only; only the keys in `keys/` and the user's own key get in.
+- This Mac's SSH key, once on your GitHub account, reads and writes every repository the account can reach; any runner-up job running as this user can use it. The `github` stage also leaves the `admin:public_key` permission on this Mac's `gh` sign-in.
 - runner-up's host place runs a job as the new user, in its session: jobs can
   reach that user's files and saved passwords. Use it only for jobs you trust.

@@ -57,15 +57,6 @@ claude_over_ssh() {
     "$HR_NAME@127.0.0.1" claude --version
 }
 
-# GitHub greets this Mac by name over SSH, with the host key from known_hosts.
-github_over_ssh() {
-  # ssh -T exits 1 even when GitHub greets you, so read its words, not its status.
-  local said
-  said="$(ssh -T -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=15 \
-    -i "$HOME/.ssh/id_ed25519" git@github.com 2>&1)"
-  grep -q 'successfully authenticated' <<< "$said"
-}
-
 [ "$(uname -s)" = Darwin ] || { bad "this is a Mac"; exit 1; }
 check "admin user $HR_NAME" bash -c "id -Gn | tr ' ' '\n' | grep -qx admin"
 check "secure token for $HR_NAME" bash -c "sysadminctl -secureTokenStatus '$HR_NAME' 2>&1 | grep -qi ENABLED"
@@ -91,7 +82,7 @@ check "runner-up login agent is loaded" launchctl print "gui/$(id -u)/com.github
 check "runner-up coordinator is running" pgrep -u "$(id -u)" -f 'runner-up serve'
 check "runner-up has a place on $HR_NAME and it is not resting" runner_up_place_ok
 check "GitHub sign-in works (runner-up needs it)" gh auth status
-check "GitHub accepts this Mac's SSH key (clones with SSH addresses work)" github_over_ssh
+check "GitHub accepts this Mac's SSH key (clones with SSH addresses work)" github_greets
 
 # With another user at the screen, this user's session must keep working.
 console="$(stat -f%Su /dev/console 2> /dev/null)"
