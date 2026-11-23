@@ -21,7 +21,7 @@ stub curl '[ -z "${CURL_FAIL-}" ] || exit 6; cat "${2:?}"'
 stub gh 'echo "gh $*" >> "$LOG"
 case "$1 $2" in
   "auth status") exit 0 ;;
-  "api user/keys") cat "$T/account" ;;
+  "api --paginate") cat "$T/account" ;;
   "ssh-key add") awk "{print \$1, \$2}" "$3" >> "$T/account" ;;
 esac'
 # ssh: GitHub greets only when the account holds the key and known_hosts has a host key.
@@ -64,7 +64,7 @@ assert_eq "$(grep -c 'ssh-key add\|auth refresh' "$LOG")" 0 "and nothing is adde
 assert_contains "$(grep '^ssh ' "$LOG" | head -n 1)" "StrictHostKeyChecking=yes" "the check trusts only known_hosts"
 
 # --- GitHub refusing the key
-: > "$T/account"; echo y > "$T/tty"; stub gh 'case "$1 $2" in "auth status") exit 0 ;; "api user/keys") cat "$T/account" ;; esac'
+: > "$T/account"; echo y > "$T/tty"; stub gh 'case "$1 $2" in "auth status") exit 0 ;; "api --paginate") cat "$T/account" ;; esac'
 stage && fail "a key GitHub does not accept stops the stage" || pass "a key GitHub does not accept stops the stage"
 assert_contains "$(cat "$T/out")" "Permission denied" "and shows what GitHub said"
 done_tests
