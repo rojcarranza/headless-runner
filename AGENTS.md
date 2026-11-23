@@ -5,7 +5,9 @@ The README explains how a person runs them; this file says how to change them.
 
 - Clone projects to `~/Dev/github.com/<owner>/<repo>` (this repository to
   `~/Dev/github.com/rojcarranza/headless-runner`). Scripts clone only through
-  `lib/clone.sh`, so every computer uses the same place.
+  `lib/clone.sh`, so every computer uses the same place. A project script
+  uses `clone_latest`, so a rerun of the `projects` stage runs GitHub's newest
+  `main`.
 - No script names one computer. The computer's name is the short name of the
   user running `./setup.sh`; per-computer facts live in `machines/<name>.json`.
 - No secret in any file: no password, token or private key. `setup.sh` asks the

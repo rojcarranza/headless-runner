@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # PraiseLineup: clone it, its backend and the dotfiles in the standard place,
 # link the review gate, make the gate simulator and try the checks.
+# A clone already there is brought up to date with GitHub first (a clean main,
+# fast-forward only), so a rerun tries the checks and scripts of GitHub's main.
 # shellcheck source=lib/common.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 # shellcheck source=lib/clone.sh
 . "$HR_ROOT/lib/clone.sh"
 
-PL="$(clone_repo rojcarranza/praiselineup)"
-clone_repo rojcarranza/praiselineup-backend > /dev/null
-DOT="$(clone_repo rojcarranza/dotfiles)"
+PL="$(clone_latest rojcarranza/praiselineup)"
+clone_latest rojcarranza/praiselineup-backend > /dev/null
+DOT="$(clone_latest rojcarranza/dotfiles)"
 
 # The review step reads the gate folder from the dotfiles, so every computer
 # shares one copy.

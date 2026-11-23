@@ -2,7 +2,9 @@
 # shellcheck disable=SC2015,SC2016,SC2034 # pass/fail helpers never fail; stand-ins are single-quoted on purpose
 # Intent (the review of PR #2): a clean Mac must get through the projects stage
 # (the gate guard needs no-mistakes init first), and a rerun of the runner-up
-# stage after a failed "machine add" must finish adding the machine. Intent
+# stage after a failed "machine add" must finish adding the machine. Intent (a
+# filed defect: a rerun of the projects stage tried an old clone's scripts): a
+# rerun brings each clone on a clean main up to date with GitHub first. Intent
 # (the captain): the claude-code stage installs Claude Code, and claude then
 # answers by name in a non-interactive SSH command.
 # shellcheck source=tests/lib.sh
@@ -14,22 +16,50 @@ stub uname '[ "$1" = -m ] && echo arm64 || echo Darwin'
 export PATH="$T/bin:$PATH"
 
 # --- projects: PraiseLineup's gate guard fails until no-mistakes init has run
-for r in praiselineup praiselineup-backend dotfiles; do mkdir -p "$DEV_HOME/rojcarranza/$r/.git"; done
-mkdir -p "$DEV_HOME/rojcarranza/praiselineup/ios/Tools" "$DEV_HOME/rojcarranza/praiselineup/scripts"
+# Real repositories stand in for GitHub, through git's own URL rewriting.
+# PraiseLineup's holds the scripts the stage runs, each logging its version.
+export GIT_CONFIG_GLOBAL="$T/gitconfig"
+git config --file "$GIT_CONFIG_GLOBAL" "url.file://$T/remote/.insteadOf" "https://github.com/"
+# publish REPO VERSION: GitHub's main of rojcarranza/REPO moves on to VERSION.
+publish() {
+  local w="$T/work/$1" s
+  [ -d "$w" ] || git init -q -b main "$w"
+  if [ "$1" = praiselineup ]; then
+    mkdir -p "$w/scripts" "$w/ios/Tools"
+    for s in scripts/install-gate-guard.sh ios/Tools/make_gate_simulator.sh ios/Tools/gate_unit_tests.sh ios/Tools/nightly_ui_tests.sh; do
+      printf '#!/bin/sh\necho "%s: %s $*" >> "$LOG"\n' "$2" "$s" > "$w/$s"
+    done
+    echo 'grep -q "^no-mistakes init" "$LOG" || { echo "No no-mistakes remote here." >&2; exit 1; }' >> "$w/scripts/install-gate-guard.sh"
+    echo '[ -n "${NO_RESULT-}" ] || { mkdir -p "$PL_NIGHTLY_HOME/latest"; echo "passed 0123abc" > "$PL_NIGHTLY_HOME/latest/result"; }' >> "$w/ios/Tools/nightly_ui_tests.sh"
+  else
+    echo "$2" > "$w/VERSION"
+  fi
+  git -C "$w" add -A
+  git -C "$w" -c user.name=t -c user.email=t@example.com commit -q -m "$2"
+  [ -d "$T/remote/rojcarranza/$1.git" ] || git init -q --bare -b main "$T/remote/rojcarranza/$1.git"
+  git -C "$w" push -q "$T/remote/rojcarranza/$1.git" main
+}
+for r in praiselineup praiselineup-backend dotfiles; do publish "$r" v1; done
 : > "$LOG"
 stub no-mistakes 'echo "no-mistakes $*" >> "$LOG"'
-stub sh 'echo "sh $*" >> "$LOG"
-case "$1" in
-  scripts/install-gate-guard.sh) grep -q "^no-mistakes init" "$LOG" || { echo "No no-mistakes remote here." >&2; exit 1; } ;;
-  ios/Tools/nightly_ui_tests.sh) mkdir -p "$PL_NIGHTLY_HOME/latest"; echo "passed 0123abc" > "$PL_NIGHTLY_HOME/latest/result" ;;
-esac'
 bash "$ROOT/projects/praiselineup.sh" > "$T/out" 2>&1; rc=$?
 assert_eq "$rc" 0 "a fresh PraiseLineup clone gets through the projects script"
 assert_eq "$(grep -n 'no-mistakes init\|install-gate-guard' "$LOG" | cut -d: -f1 | tr '\n' ' ')" "1 2 " "init runs before the gate guard"
-assert_contains "$(cat "$LOG")" "sh ios/Tools/nightly_ui_tests.sh --no-post" "the trial nightly is the real one, with nothing posted"
+assert_contains "$(cat "$LOG")" "v1: ios/Tools/nightly_ui_tests.sh --no-post" "the trial nightly is the real one, with nothing posted"
 assert_contains "$(cat "$T/out")" "trial nightly passed" "and its latest/result is read"
-stub sh 'case "$1" in ios/Tools/nightly_ui_tests.sh) exit 0 ;; esac'
-bash "$ROOT/projects/praiselineup.sh" > "$T/out" 2>&1 && fail "a nightly that wrote no result fails the stage" || pass "a nightly that wrote no result fails the stage"
+NO_RESULT=1 bash "$ROOT/projects/praiselineup.sh" > "$T/out" 2>&1 && fail "a nightly that wrote no result fails the stage" || pass "a nightly that wrote no result fails the stage"
+
+# --- projects, run again after GitHub's main moved on
+for r in praiselineup praiselineup-backend dotfiles; do publish "$r" v2; done
+: > "$LOG"
+bash "$ROOT/stages/projects.sh" > "$T/out" 2>&1; rc=$?
+assert_eq "$rc" 0 "a rerun of the projects stage passes"
+assert_contains "$(cat "$LOG")" "v2: ios/Tools/gate_unit_tests.sh" "the rerun's gate unit tests are GitHub's newest"
+assert_contains "$(cat "$LOG")" "v2: ios/Tools/nightly_ui_tests.sh --no-post" "and so is its trial nightly"
+assert_not_contains "$(cat "$LOG")" "v1: " "no script of the old clone runs"
+for r in praiselineup praiselineup-backend dotfiles; do
+  assert_eq "$(git -C "$DEV_HOME/rojcarranza/$r" rev-parse HEAD)" "$(git -C "$T/work/$r" rev-parse HEAD)" "the $r clone is at GitHub's main"
+done
 
 # --- runner-up: init done but machine add failed; a rerun adds the machine
 mkdir -p "$DEV_HOME/rojcarranza/headless-runner/.git" "$DEV_HOME/rojcarranza/headless-runner/machine"
