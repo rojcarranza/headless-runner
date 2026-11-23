@@ -25,6 +25,9 @@ stub ssh 'echo "ssh $*" >> "$LOG"
 grep -qxF "$(awk "{print \$1, \$2}" "$HOME/.ssh/id_ed25519.pub")" "$T/account" && grep -q "^github.com " "$HOME/.ssh/known_hosts" \
   && { echo "Hi octo! You'"'"'ve successfully authenticated, but GitHub does not provide shell access."; exit 1; }
 echo "git@github.com: Permission denied (publickey)." >&2; exit 255'
+# open: the person adds the key on GitHub when the page opens (ADD=0: they do not).
+stub open 'echo "open $*" >> "$LOG"; [ "${ADD-1}" = 0 ] || awk "{print \$1, \$2}" "$HOME/.ssh/id_ed25519.pub" >> "$T/account"'
+stub pbcopy 'cat > "$T/clipboard"'
 : > "$LOG"
 set +e
 stage() { bash "$ROOT/stages/github.sh" > "$T/out" 2>&1; }
@@ -42,9 +45,6 @@ assert_eq "$(ssh-keygen -F github.com -f "$KH" | grep -c '^# Host')" 2 "ssh-keyg
 printf '{"ssh_keys":[]}' > "$T/empty.json"; HR_GITHUB_META="$T/empty.json" stage && fail "an answer without keys stops the stage" || pass "an answer without keys stops the stage"
 
 # --- the key is added on GitHub's page, by the person
-# open: the person adds the key on GitHub when the page opens (ADD=0: they do not).
-stub open 'echo "open $*" >> "$LOG"; [ "${ADD-1}" = 0 ] || awk "{print \$1, \$2}" "$HOME/.ssh/id_ed25519.pub" >> "$T/account"'
-stub pbcopy 'cat > "$T/clipboard"'
 : > "$LOG"; : > "$T/account"; echo > "$T/tty"; stage; rc=$?
 assert_eq "$rc" 0 "a Mac GitHub does not know: the person adds the key on GitHub and the stage passes"
 assert_contains "$(cat "$LOG")" "open https://github.com/settings/ssh/new" "GitHub's new-key page is opened"
