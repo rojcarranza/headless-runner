@@ -30,7 +30,7 @@ ensure_machine_file() {
 assemble_config() {
   local dir="$1"
   mkdir -p "$dir"
-  cp "$HR_ROOT/machine/flake.nix" "$HR_ROOT/machine/machine.nix" "$dir/"
+  cp "$HR_ROOT/machine/flake.nix" "$HR_ROOT/machine/machine.nix" "$HR_ROOT/machine/gh-axi.nix" "$dir/"
   cp "$HR_ROOT/machine/flake.lock" "$dir/"
   cp "$HR_ROOT/machines/$HR_NAME.json" "$dir/settings.json"
   cat > "$dir/headless.env" <<ENV

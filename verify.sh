@@ -70,7 +70,7 @@ check "iOS 27 runtime installed" bash -c "xcrun simctl list runtimes available |
 check "iPhone 18 Pro simulator" bash -c "xcrun simctl list devices available | grep -q '^ *iPhone 18 Pro ('"
 check "iPad Pro 11-inch (M5) simulator" bash -c "xcrun simctl list devices available | grep -q '^ *iPad Pro 11-inch (M5) ('"
 check "Rancher Desktop is installed" test -d "${HR_RANCHER_APP:-/Applications/Rancher Desktop.app}"
-for t in git gh python3 no-mistakes; do check "$t is present" command -v "$t"; done
+for t in git gh gh-axi python3 no-mistakes; do check "$t is present" command -v "$t"; done
 check "Claude Code is installed at ~/.local/bin/claude" "$HOME/.local/bin/claude" --version
 check "claude runs by name in a non-interactive SSH command" claude_over_ssh
 check "DEV_HOME is set to $DEV_HOME in ~/.zprofile" grep -qxF "export DEV_HOME=\"$DEV_HOME\"" "$HOME/.zprofile"
@@ -81,7 +81,7 @@ check "runner-up login agent is loaded" launchctl print "gui/$(id -u)/com.github
 # running coordinator process is checked beside it.
 check "runner-up coordinator is running" pgrep -u "$(id -u)" -f 'runner-up serve'
 check "runner-up has a place on $HR_NAME and it is not resting" runner_up_place_ok
-check "GitHub sign-in works (runner-up needs it)" gh auth status
+check "GitHub sign-in works (runner-up needs it)" gh-axi api /user
 check "GitHub accepts this Mac's SSH key (clones with SSH addresses work)" github_greets
 
 # With another user at the screen, this user's session must keep working.

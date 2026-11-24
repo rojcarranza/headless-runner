@@ -2,7 +2,7 @@
   description = "A Mac that takes tasks and iOS CI: headless layer plus the tools every task needs";
 
   inputs = {
-    # The one place the three tools are pinned, with flake.lock (see AGENTS.md);
+    # The one place the four tools are pinned, with flake.lock (see AGENTS.md);
     # stages/machine.sh reads the headless commit back from flake.lock.
     headless.url = "github:kunchenguid/headless/e9168b7977b39c488241fbfb62bbb12268cd2862";
     nixpkgs.follows = "headless/nixpkgs";
@@ -10,6 +10,8 @@
     # These two keep their own nixpkgs: runner-up needs a newer Go than most.
     runner-up.url = "github:kunchenguid/runner-up/v0.1.13";
     no-mistakes.url = "github:kunchenguid/no-mistakes/v1.111.0";
+    # Not a flake: gh-axi.nix builds it. A bump also needs a new pnpmDeps hash there.
+    gh-axi = { url = "github:kunchenguid/gh-axi/gh-axi-v0.1.52"; flake = false; };
   };
 
   outputs = inputs@{ headless, nix-darwin, ... }: {

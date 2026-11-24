@@ -20,7 +20,10 @@ stub nc 'exit 0'
 stub pmset 'printf " SleepDisabled\t\t${LID-1}\n"'
 stub xcodebuild 'case "$1" in -version) printf "Xcode 27.1\nBuild version 27A100\n" ;; esac'
 stub xcrun 'case "$*" in "simctl list runtimes available") echo "iOS 27.1 (27.1 - 27A5000) - com.apple.CoreSimulator.SimRuntime.iOS-27-1" ;; "simctl list devices available") printf "== Devices ==\n-- iOS 27.1 --\n    iPhone 18 Pro (AAAAAAAA-0000-0000-0000-000000000001) (Shutdown)\n    iPad Pro 11-inch (M5) (AAAAAAAA-0000-0000-0000-000000000002) (Shutdown)\n" ;; esac'
-stub git 'exit 0'; stub gh 'exit 0'; stub python3 'exit 0'; stub no-mistakes 'exit 0'
+stub git 'exit 0'; stub gh 'exit 0'
+# gh-axi api /user: signed out (AXI_OUT=1) prints an error and exits 1.
+stub gh-axi '[ "${AXI_OUT-}" = 1 ] && { echo "error: not signed in"; exit 1; }; echo "login: octo"'
+stub python3 'exit 0'; stub no-mistakes 'exit 0'
 stub launchctl 'exit 0'
 # runner-up's real status lines; RESTING=1 rests the place and a job waits on the pool.
 stub runner-up 'echo "place host-1 on ${PLACE_MACHINE-builder} (host, 4 cores, 8192 MB) $([ "${RESTING-}" = 1 ] && echo "resting (agent unreachable since 2026-11-22T10:00:00Z)" || echo free)"
@@ -95,4 +98,10 @@ out="$(GH_KEY=none "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 1 "a GitHub that refuses this Mac's SSH key fails the run"
 assert_contains "$out" "FAIL  GitHub accepts this Mac's SSH key" "and names the line"
 assert_contains "$("$ROOT/verify.sh" 2>&1)" "ok    GitHub accepts this Mac's SSH key" "a healthy Mac's SSH greeting passes its line"
+# The sign-in check asks gh-axi, never gh auth status (a gh that fails on auth must not matter).
+stub gh '[ "$1" = auth ] && exit 1; exit 0'
+assert_contains "$("$ROOT/verify.sh" 2>&1)" "ok    GitHub sign-in works" "a signed-in gh-axi passes the sign-in line"
+out="$(AXI_OUT=1 "$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "a signed-out gh-axi fails the run"
+assert_contains "$out" "FAIL  GitHub sign-in works" "and names the line"
 done_tests
