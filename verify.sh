@@ -81,7 +81,7 @@ check "runner-up login agent is loaded" launchctl print "gui/$(id -u)/com.github
 # running coordinator process is checked beside it.
 check "runner-up coordinator is running" pgrep -u "$(id -u)" -f 'runner-up serve'
 check "runner-up has a place on $HR_NAME and it is not resting" runner_up_place_ok
-check "GitHub sign-in works (runner-up needs it)" gh-axi api /user
+check "GitHub sign-in works (runner-up needs it)" github_signed_in
 check "GitHub accepts this Mac's SSH key (clones with SSH addresses work)" github_greets
 
 # With another user at the screen, this user's session must keep working.

@@ -11,8 +11,10 @@ command -v runner-up > /dev/null || die "runner-up is missing; run bash setup.sh
 
 command -v gh-axi > /dev/null || die "gh-axi is missing; run bash setup.sh machine first"
 # gh-axi has no sign-in commands: gh auth login and gh auth setup-git are the
-# only plain gh calls here, because gh-axi relies on gh's sign-in.
-if ! gh-axi api /user > /dev/null 2>&1; then
+# only plain gh calls here, because gh-axi relies on gh's sign-in. The check
+# runs in the signed-in session, so a Mac already signed in is not asked again
+# when this stage runs over SSH.
+if ! github_signed_in; then
   say "Sign in to GitHub: gh opens a page and shows a one-time code to type there."
   gh auth login --hostname github.com --git-protocol https --web --scopes repo,workflow
 fi

@@ -86,7 +86,9 @@ background"). runner-up and the nightly run in that same signed-in session.
   user: that stops its work until the next restart signs it back in.
 - `./verify.sh`, run over SSH while you are in another account, reports that
   another user is at the screen and that runner-up and the simulator service
-  still answer for the new user.
+  still answer for the new user. Its GitHub sign-in line asks from the new
+  user's signed-in session, where runner-up runs: gh keeps its sign-in in the
+  login keychain, which macOS does not open to an SSH session.
 - Unproven: iOS simulator UI tests may stall while another user has the screen.
   If the check above shows that, the nightly needs the new user at the screen.
 
@@ -112,6 +114,9 @@ checks need.
   needs no code change: sign in there as its own administrator and run it.
 - A Mac set up before a stage was added (such as `claude-code`) gets it with
   `git pull` in its clone, then `bash setup.sh`: only the stages not done yet run.
+- A change to a stage that is already done, such as a tool added to `machine/`
+  (gh-axi), reaches it with `git pull`, then that stage again:
+  `bash setup.sh machine`.
 - `machines/<name>.json` holds one computer's public settings (user, host name,
   public SSH keys, auto sign-in). Edit it, then `bash setup.sh machine`.
 - Undo: turn off auto sign-in in `machines/<name>.json` (`"autoLogin": false`)
@@ -132,7 +137,7 @@ What the checks cannot prove (they run on Linux with stand-ins for macOS
 commands): that headless, Xcode, Homebrew, launchd and `systemsetup` behave on
 the Air as the scripts expect, that Anthropic's installer and macOS's own SSH
 and zsh do what the `claude-code` stage expects, and that Rancher Desktop opens
-on its first start (macOS may ask for one click) and then makes its `docker` command, that GitHub greets this Mac's SSH key in the `github` stage, and that the pnpm-built `gh-axi` builds for macOS (nothing in the checks builds it; they only evaluate the flake). Only a run of `bash setup.sh` on the Air and its
+on its first start (macOS may ask for one click) and then makes its `docker` command, that GitHub greets this Mac's SSH key in the `github` stage, that a one-shot login agent started from an SSH session reads gh's sign-in from the keychain (the GitHub sign-in check relies on it), and that the pnpm-built `gh-axi` builds for macOS (nothing in the checks builds it; they only evaluate the flake). Only a run of `bash setup.sh` on the Air and its
 `verify.sh` prove that. The manual workflow `.github/workflows/check.yml` runs
 `verify.sh` on a named computer through runner-up.
 
