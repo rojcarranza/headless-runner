@@ -15,7 +15,9 @@ in
     inputs.runner-up.packages.${system}.default
     inputs.no-mistakes.packages.${system}.default
     pkgs.git
+    # gh-axi runs gh underneath, so gh stays installed beside it.
     pkgs.gh
+    (pkgs.callPackage ./gh-axi.nix { src = inputs.gh-axi; })
     pkgs.python3
     pkgs.jq
     pkgs.shellcheck

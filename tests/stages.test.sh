@@ -64,7 +64,7 @@ done
 # --- runner-up: init done but machine add failed; a rerun adds the machine
 mkdir -p "$DEV_HOME/rojcarranza/headless-runner/.git" "$DEV_HOME/rojcarranza/headless-runner/machine"
 CFG="$HOME/Library/Application Support/runner-up/config.json"
-stub gh 'exit 0'; stub launchctl 'exit 0'; stub sleep 'exit 0'
+stub gh 'echo "gh $*" >> "$LOG"'; stub gh-axi 'echo "gh-axi $*" >> "$LOG"; [ -z "${SIGNED_OUT-}" ]'; stub launchctl 'exit 0'; stub sleep 'exit 0'
 stub runner-up 'CFG="$HOME/Library/Application Support/runner-up/config.json"
 case "$1" in
   init) mkdir -p "$(dirname "$CFG")"; echo "{\"machines\":[]}" > "$CFG" ;;
@@ -77,6 +77,14 @@ bash "$ROOT/stages/runner-up.sh" > /dev/null 2>&1
 assert_eq "$(jq -r '.machines[0].name' "$CFG")" builder "a rerun adds the machine the file lacks"
 bash "$ROOT/stages/runner-up.sh" > /dev/null 2>&1
 assert_eq "$(jq '.machines | length' "$CFG")" 1 "and a second rerun adds nothing twice"
+# Intent (the captain): sign-in checks go through gh-axi; gh auth login and setup-git are the named exception.
+: > "$LOG"; bash "$ROOT/stages/runner-up.sh" > /dev/null 2>&1
+assert_contains "$(cat "$LOG")" "gh-axi api /user" "the stage checks the GitHub sign-in with gh-axi"
+assert_not_contains "$(cat "$LOG")" "gh auth status" "and never with gh auth status"
+assert_not_contains "$(cat "$LOG")" "gh auth login" "a signed-in Mac is not asked to sign in again"
+assert_contains "$(cat "$LOG")" "gh auth setup-git" "git's credential helper is still set up through gh"
+: > "$LOG"; SIGNED_OUT=1 bash "$ROOT/stages/runner-up.sh" > /dev/null 2>&1
+assert_contains "$(cat "$LOG")" "gh auth login --hostname github.com" "a signed-out Mac is sent through gh auth login"
 # --- the password stays out of child processes, even when it arrives exported
 out="$(HR_PASSWORD=sentinel-9f3 bash -c '. "$1/lib/common.sh"; need_password; bash -c "echo \"[\${HR_PASSWORD-}]\""' _ "$ROOT")"
 assert_eq "$out" "[]" "need_password stops the password reaching child processes"

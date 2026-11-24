@@ -45,10 +45,10 @@ skipped. The stages, in order:
 | Stage | What runs | What only you do |
 | --- | --- | --- |
 | `account` | Checks admin and secure token, turns on Remote Login, makes the user's SSH key and `~/Dev/github.com` | Paste the public key of the computer that will add this one in Infinitary (once) |
-| `machine` | headless: Nix, FileVault off, auto sign-in, never asleep (lid closed too), key-only SSH, Tailscale, the shared CI tools, and a Rancher Desktop defaults profile; it opens Rancher Desktop once so Docker exists | Approve the Tailscale page it opens; click Open in macOS's window when Rancher Desktop first starts; turn off key expiry for the computer in Tailscale's admin page |
+| `machine` | headless: Nix, FileVault off, auto sign-in, never asleep (lid closed too), key-only SSH, Tailscale, the shared CI tools (`gh` with `gh-axi`, which the scripts use for every GitHub call except sign-in), and a Rancher Desktop defaults profile; it opens Rancher Desktop once so Docker exists | Approve the Tailscale page it opens; click Open in macOS's window when Rancher Desktop first starts; turn off key expiry for the computer in Tailscale's admin page |
 | `claude-code` | Claude Code, which Infinitary runs its work with, from Anthropic's native installer at `~/.local/bin/claude`; puts that folder on PATH in `~/.zshenv`, the only profile a non-interactive SSH command reads, and checks that `claude --version` answers there by name | Nothing now; you sign it in to Claude later, through Infinitary's setup card |
 | `xcode` | Xcode from the App Store (27.1 or later), license, first launch, iOS platform, the iPhone 18 Pro and iPad Pro 11-inch (M5) simulators. Device Hub is part of Xcode | Sign in to the App Store |
-| `runner-up` | Installs runner-up as a login agent with one host place on this Mac; makes this repository a clone at `~/Dev/github.com/rojcarranza/headless-runner` | Sign in to GitHub (`gh` shows a code) |
+| `runner-up` | Installs runner-up as a login agent with one host place on this Mac; makes this repository a clone at `~/Dev/github.com/rojcarranza/headless-runner` | Sign in to GitHub (`gh auth login` shows a code; gh-axi has no sign-in command, so this and `gh auth setup-git` are the only plain `gh` calls) |
 | `github` | Adds GitHub's published SSH host keys to `~/.ssh/known_hosts`; if GitHub does not already greet this Mac's SSH key, copies the key and opens GitHub's new-key page, then checks that `ssh -T git@github.com` greets you, so projects with SSH addresses clone. The Mac gets no permission to manage your account | Paste the key on GitHub's page (title: the computer's name), press Add SSH key, then Return |
 | `projects` | Runs every script in `projects/`; `praiselineup.sh` clones PraiseLineup, its backend and the dotfiles (a clone already there on a clean `main` is first brought up to date with GitHub, fast-forward only), links the review gate (`no-mistakes init`), makes the gate simulator, runs the gate unit tests and a trial nightly (the real nightly with `--no-post`, into a scratch folder; up to six hours) | Nothing |
 | `restart` | Restarts once; the Mac signs itself back in and `verify.sh` runs by itself, with a notification | Nothing |
@@ -132,7 +132,7 @@ What the checks cannot prove (they run on Linux with stand-ins for macOS
 commands): that headless, Xcode, Homebrew, launchd and `systemsetup` behave on
 the Air as the scripts expect, that Anthropic's installer and macOS's own SSH
 and zsh do what the `claude-code` stage expects, and that Rancher Desktop opens
-on its first start (macOS may ask for one click) and then makes its `docker` command, and that GitHub greets this Mac's SSH key in the `github` stage. Only a run of `bash setup.sh` on the Air and its
+on its first start (macOS may ask for one click) and then makes its `docker` command, that GitHub greets this Mac's SSH key in the `github` stage, and that the pnpm-built `gh-axi` compiles for macOS (it is built here on Linux only). Only a run of `bash setup.sh` on the Air and its
 `verify.sh` prove that. The manual workflow `.github/workflows/check.yml` runs
 `verify.sh` on a named computer through runner-up.
 

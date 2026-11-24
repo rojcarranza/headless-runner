@@ -53,6 +53,23 @@
         "type": "github"
       }
     },
+    "gh-axi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795100566,
+        "narHash": "sha256-PN8ue61qBmtzJ1xGzwH6lOoVbXhTwJhlh3NGFfSV5kE=",
+        "owner": "kunchenguid",
+        "repo": "gh-axi",
+        "rev": "5a526599c9fa5a76b650079f5e9dbb1c1874a6ce",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kunchenguid",
+        "ref": "gh-axi-v0.1.52",
+        "repo": "gh-axi",
+        "type": "github"
+      }
+    },
     "headless": {
       "inputs": {
         "disko": "disko",
@@ -183,6 +200,7 @@
     },
     "root": {
       "inputs": {
+        "gh-axi": "gh-axi",
         "headless": "headless",
         "nix-darwin": [
           "headless",
