@@ -36,3 +36,20 @@ exec env -i HOME="\$HOME" PATH=/usr/bin:/bin:/usr/sbin:/sbin "$zsh" -c "\$*"
 EOF
   chmod +x "$1/ssh"
 }
+# stand_in_launchctl BIN: launchctl as macOS's launchd answers it for a login
+# agent. bootstrap gui/UID PLIST starts the plist's ProgramArguments after
+# returning, in the background, as a RunAtLoad job starts: in the signed-in
+# session (IN_SIGNED_IN_SESSION=1, which a stand-in reading the login keychain
+# checks), with launchd's short PATH and none of the caller's environment.
+# The plist's EnvironmentVariables are not applied. Other subcommands succeed.
+stand_in_launchctl() {
+  cat > "$1/launchctl" << 'EOF'
+#!/bin/bash
+[ "$1" = bootstrap ] || exit 0
+args=()
+while IFS= read -r a; do args+=("$a"); done < <(sed -n '/<key>ProgramArguments<\/key>/,/<\/array>/p' "$3" \
+  | grep -o '<string>[^<]*</string>' | sed 's|<string>\(.*\)</string>|\1|; s/&lt;/</g; s/&gt;/>/g; s/&amp;/\&/g')
+env -i HOME="$HOME" PATH=/usr/bin:/bin:/usr/sbin:/sbin IN_SIGNED_IN_SESSION=1 "${args[@]}" > /dev/null 2>&1 &
+EOF
+  chmod +x "$1/launchctl"
+}

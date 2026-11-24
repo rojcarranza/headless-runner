@@ -21,10 +21,13 @@ stub pmset 'printf " SleepDisabled\t\t${LID-1}\n"'
 stub xcodebuild 'case "$1" in -version) printf "Xcode 27.1\nBuild version 27A100\n" ;; esac'
 stub xcrun 'case "$*" in "simctl list runtimes available") echo "iOS 27.1 (27.1 - 27A5000) - com.apple.CoreSimulator.SimRuntime.iOS-27-1" ;; "simctl list devices available") printf "== Devices ==\n-- iOS 27.1 --\n    iPhone 18 Pro (AAAAAAAA-0000-0000-0000-000000000001) (Shutdown)\n    iPad Pro 11-inch (M5) (AAAAAAAA-0000-0000-0000-000000000002) (Shutdown)\n" ;; esac'
 stub git 'exit 0'; stub gh 'exit 0'
-# gh-axi api /user: signed out (AXI_OUT=1) prints an error and exits 1.
-stub gh-axi '[ "${AXI_OUT-}" = 1 ] && { echo "error: not signed in"; exit 1; }; echo "login: octo"'
+# gh-axi api /user reads gh's token from the login keychain, which macOS opens
+# only to the signed-in session (launchd's jobs); anywhere else, as over SSH,
+# it says what the real one says there. $T/signed-out: no sign-in anywhere.
+stub gh-axi '[ -n "${IN_SIGNED_IN_SESSION-}" ] && [ ! -e "'"$T"'/signed-out" ] && { echo "login: octo"; exit 0; }
+echo "error: \"gh: Requires authentication (HTTP 401)\""; echo "code: UNKNOWN"; exit 1'
 stub python3 'exit 0'; stub no-mistakes 'exit 0'
-stub launchctl 'exit 0'
+stand_in_launchctl "$T/bin"
 # runner-up's real status lines; RESTING=1 rests the place and a job waits on the pool.
 stub runner-up 'echo "place host-1 on ${PLACE_MACHINE-builder} (host, 4 cores, 8192 MB) $([ "${RESTING-}" = 1 ] && echo "resting (agent unreachable since 2026-11-22T10:00:00Z)" || echo free)"
 echo "waiting rojcarranza/builder-app builder job-1 since 2026-11-22T10:00:00Z"'
@@ -90,7 +93,9 @@ stub pgrep 'echo 123'
 # After a restart the login agent must go: its file is deleted before the agent
 # is stopped, because stopping the agent ends the script.
 PLIST="$HOME/Library/LaunchAgents/com.headless-runner.verify.plist"
-stub launchctl "[ \"\$1\" = bootout ] && { [ -e '$PLIST' ] && echo file-still-there > '$T/order' || echo file-gone > '$T/order'; }; exit 0"
+mv "$T/bin/launchctl" "$T/bin/launchctl-launchd"
+stub launchctl "[ \"\$1 \$2\" = 'bootout gui/501/com.headless-runner.verify' ] && { [ -e '$PLIST' ] && echo file-still-there > '$T/order' || echo file-gone > '$T/order'; }
+exec \"\$(dirname \"\$0\")/launchctl-launchd\" \"\$@\""
 : > "$PLIST"
 "$ROOT/verify.sh" --after-restart > /dev/null 2>&1
 assert_eq "$(cat "$T/order" 2> /dev/null)" "file-gone" "the login agent's file is deleted before the agent is stopped"
@@ -99,9 +104,15 @@ assert_eq "$rc" 1 "a GitHub that refuses this Mac's SSH key fails the run"
 assert_contains "$out" "FAIL  GitHub accepts this Mac's SSH key" "and names the line"
 assert_contains "$("$ROOT/verify.sh" 2>&1)" "ok    GitHub accepts this Mac's SSH key" "a healthy Mac's SSH greeting passes its line"
 # The sign-in check asks gh-axi, never gh auth status (a gh that fails on auth must not matter).
+# Intent (the captain's error): verify.sh run over SSH, where gh cannot read its
+# keychain, failed this line although runner-up's session is signed in.
 stub gh '[ "$1" = auth ] && exit 1; exit 0'
-assert_contains "$("$ROOT/verify.sh" 2>&1)" "ok    GitHub sign-in works" "a signed-in gh-axi passes the sign-in line"
-out="$(AXI_OUT=1 "$ROOT/verify.sh" 2>&1)"; rc=$?
-assert_eq "$rc" 1 "a signed-out gh-axi fails the run"
+out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 0 "run where gh cannot read its keychain (as over SSH), a signed-in Mac passes"
+assert_contains "$out" "ok    GitHub sign-in works" "the sign-in line answers for the signed-in session"
+touch "$T/signed-out"
+out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "a Mac with no GitHub sign-in fails the run"
 assert_contains "$out" "FAIL  GitHub sign-in works" "and names the line"
+rm "$T/signed-out"
 done_tests

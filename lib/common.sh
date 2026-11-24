@@ -71,3 +71,53 @@ github_greets() {
     -o ConnectTimeout=15 -i "${1:-$HOME/.ssh/id_ed25519}" git@github.com 2>&1 || true)"
   grep -q 'successfully authenticated' <<< "$GITHUB_SAID"
 }
+
+# github_signed_in: gh-axi api /user answers in this user's signed-in session,
+# where runner-up runs as a login agent and uses gh's sign-in. gh keeps its
+# token in the login keychain, which macOS does not open to an SSH session:
+# there gh-axi answers "Requires authentication (HTTP 401)" while runner-up is
+# signed in. So the call runs as a one-shot login agent in that session, with
+# this shell's PATH (launchd's own lacks the Nix profile where gh-axi lives),
+# and hands back its exit status in a file. No signed-in session, no answer:
+# runner-up cannot run then either.
+github_signed_in() {
+  local dir label rc="" deadline
+  dir="$(mktemp -d)" || return 1
+  label="com.headless-runner.github-check.$$"
+  {
+    printf 'export PATH=%q\n' "$PATH"
+    printf 'gh-axi api /user > /dev/null 2>&1\n'
+    # Written whole, then renamed, so the waiting shell never reads half a status.
+    printf 'echo $? > %q && mv %q %q\n' "$dir/status.new" "$dir/status.new" "$dir/status"
+  } > "$dir/check.sh"
+  cat > "$dir/check.plist" << PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$label</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>$(xml_text "$dir/check.sh")</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+PLIST
+  if launchctl bootstrap "gui/$(id -u)" "$dir/check.plist" 2> /dev/null; then
+    # launchd starts the job after bootstrap returns; a slow network gets a minute.
+    deadline=$((SECONDS + 60))
+    while [ ! -f "$dir/status" ] && [ "$SECONDS" -lt "$deadline" ]; do sleep 0.2; done
+    launchctl bootout "gui/$(id -u)/$label" 2> /dev/null
+    rc="$(cat "$dir/status" 2> /dev/null)"
+  fi
+  rm -rf "$dir"
+  [ "$rc" = 0 ]
+}
+
+# xml_text TEXT: TEXT with &, < and > escaped, for a plist <string>. sed, not
+# ${var//}: bash 5.2 reads & in a substitution's replacement as the match.
+xml_text() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
