@@ -37,7 +37,6 @@ stdenv.mkDerivation (finalAttrs: {
     runHook postInstall
   '';
 
-  # The shebang points at the store's node, so the tool never needs node on PATH.
   meta = {
     description = "Agent-friendly wrapper around the gh CLI";
     homepage = "https://github.com/kunchenguid/gh-axi";

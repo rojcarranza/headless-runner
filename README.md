@@ -17,7 +17,7 @@ It is built on two projects by Kun Chen, which carry most of the knowledge:
 Kun's write-up of the approach (a small bootstrap, then nix-darwin with
 declarative Homebrew, owned small Macs as CI runners, fixed job slots) is the
 reason the setup is layered this way. Versions are in `machine/flake.nix` with
-`machine/flake.lock` (headless, runner-up, no-mistakes) and `pins.env` (Xcode).
+`machine/flake.lock` (headless, runner-up, no-mistakes, gh-axi) and `pins.env` (Xcode).
 Claude Code is left unpinned: Anthropic's native build keeps itself up to date.
 
 ## Run it
@@ -132,7 +132,7 @@ What the checks cannot prove (they run on Linux with stand-ins for macOS
 commands): that headless, Xcode, Homebrew, launchd and `systemsetup` behave on
 the Air as the scripts expect, that Anthropic's installer and macOS's own SSH
 and zsh do what the `claude-code` stage expects, and that Rancher Desktop opens
-on its first start (macOS may ask for one click) and then makes its `docker` command, that GitHub greets this Mac's SSH key in the `github` stage, and that the pnpm-built `gh-axi` compiles for macOS (it is built here on Linux only). Only a run of `bash setup.sh` on the Air and its
+on its first start (macOS may ask for one click) and then makes its `docker` command, that GitHub greets this Mac's SSH key in the `github` stage, and that the pnpm-built `gh-axi` builds for macOS (nothing in the checks builds it; they only evaluate the flake). Only a run of `bash setup.sh` on the Air and its
 `verify.sh` prove that. The manual workflow `.github/workflows/check.yml` runs
 `verify.sh` on a named computer through runner-up.
 
