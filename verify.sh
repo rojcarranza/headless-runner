@@ -57,11 +57,31 @@ claude_over_ssh() {
     "$HR_NAME@127.0.0.1" claude --version
 }
 
+# Tailscale SSH answers port 22 itself and, in check mode, asks the person for a
+# browser approval every 12 hours; macOS's own sshd takes the first mate's key.
+tailscale_ssh_off() {
+  local prefs
+  prefs="$(tailscale debug prefs 2> /dev/null)" || return 1
+  grep -q '"RunSSH"' <<< "$prefs" && ! grep -Eq '"RunSSH":[[:space:]]*true' <<< "$prefs"
+}
+# This Mac's own key lets it into itself only; another computer needs its own line.
+other_key_authorized() {
+  local line own
+  own="$(key_id "$(head -n 1 "$HOME/.ssh/id_ed25519.pub")")"
+  while IFS= read -r line; do
+    case "$line" in '' | '#'*) continue ;; esac
+    [ "$(key_id "$line")" = "$own" ] || return 0
+  done < "$HOME/.ssh/authorized_keys"
+  return 1
+}
+
 [ "$(uname -s)" = Darwin ] || { bad "this is a Mac"; exit 1; }
 check "admin user $HR_NAME" bash -c "id -Gn | tr ' ' '\n' | grep -qx admin"
 check "secure token for $HR_NAME" bash -c "sysadminctl -secureTokenStatus '$HR_NAME' 2>&1 | grep -qi ENABLED"
 check "Remote Login is on" nc -z 127.0.0.1 22
 headless_checks
+check "Tailscale SSH is off (RunSSH false; sshd on port 22 takes keys)" tailscale_ssh_off
+check "SSH authorizes a key other than this Mac's own" other_key_authorized
 # headless checks sleep and disksleep only; the lid-closed setting is this repository's.
 check "awake with the lid closed (pmset disablesleep)" bash -c "pmset -g | grep -Eq 'SleepDisabled[[:space:]]+1'"
 check "Xcode $XCODE_MIN or later selected" xcode_is_new_enough

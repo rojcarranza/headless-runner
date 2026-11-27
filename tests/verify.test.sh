@@ -46,6 +46,12 @@ stand_in_ssh "$T/bin"
 # GitHub answers git@github.com with its greeting (and exit 1) while the key is on the account (GH_KEY=none: refused).
 mv "$T/bin/ssh" "$T/bin/ssh-host"
 printf '#!/bin/sh\ncase "$*" in\n  *git@github.com*) [ "${GH_KEY-ok}" = ok ] && { echo "Hi octo! You'"'"'ve successfully authenticated, but GitHub does not provide shell access."; exit 1; }; echo "Permission denied (publickey)." >&2; exit 255 ;;\nesac\nexec "$(dirname "$0")/ssh-host" "$@"\n' > "$T/bin/ssh"; chmod +x "$T/bin/ssh"
+# Tailscale's prefs as tailscale debug prefs prints them; SSH=on turns Tailscale SSH on.
+stub tailscale 'printf "{\n\t\"ControlURL\": \"https://controlplane.tailscale.com\",\n\t\"RunSSH\": %s,\n\t\"WantRunning\": true\n}\n" "$([ "${SSH-off}" = on ] && echo true || echo false)"'
+# sshd's authorized keys: the Mac's own key and the first mate computer's.
+mkdir -p "$HOME/.ssh"; make_key "$HOME/.ssh/id_ed25519"; make_key "$T/mate"
+cat "$HOME/.ssh/id_ed25519.pub" > "$HOME/.ssh/authorized_keys"
+cat "$T/mate.pub" >> "$HOME/.ssh/authorized_keys"
 export PATH="$T/bin:$PATH"
 
 out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
@@ -53,6 +59,19 @@ assert_eq "$rc" 0 "a healthy Mac passes"
 assert_contains "$out" "all checks passed" "the summary says so"
 assert_contains "$out" "ok    FileVault off" "each check is one line, headless's own lines among them"
 assert_contains "$out" "switched-user check skipped" "at the screen: the switched-user check says it is skipped"
+
+assert_contains "$out" "ok    Tailscale SSH is off" "Tailscale SSH off passes"
+assert_contains "$out" "ok    SSH authorizes a key other than" "a second key passes"
+
+out="$(SSH=on "$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "Tailscale SSH on fails the run"
+assert_contains "$out" "FAIL  Tailscale SSH is off" "and names the line"
+
+rm "$HOME/.ssh/authorized_keys"; cat "$HOME/.ssh/id_ed25519.pub" > "$HOME/.ssh/authorized_keys"
+out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "only the own key authorized fails the run"
+assert_contains "$out" "FAIL  SSH authorizes a key other than" "and names the line"
+cat "$T/mate.pub" >> "$HOME/.ssh/authorized_keys"
 
 out="$(FILEVAULT=on "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 1 "FileVault on fails the run"
