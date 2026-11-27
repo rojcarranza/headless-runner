@@ -121,3 +121,31 @@ PLIST
 xml_text() {
   printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
 }
+
+# key_id LINE: a public key's type and key material, the part that identifies
+# it; the comment at the end of an authorized_keys line is free text.
+key_id() { printf '%s\n' "$1" | awk '{ print $1, $2 }'; }
+
+# is_own_key LINE: true when LINE is this user's own public key. The first
+# mate's key must be another computer's: this Mac's own key only lets the Mac
+# into itself, so a key-only sshd would turn every other computer away.
+is_own_key() {
+  local own="${KEY_FILE:-$HOME/.ssh/id_ed25519}.pub"
+  [ -f "$own" ] || return 1
+  [ "$(key_id "$1")" = "$(key_id "$(head -n 1 "$own")")" ]
+}
+
+# has_other_key FILE...: true when a file holds a public key line that is not
+# this user's own. Blank and comment lines, and files that are missing, count
+# for nothing.
+has_other_key() {
+  local f line
+  for f in "$@"; do
+    [ -f "$f" ] || continue
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in '' | '#'*) continue ;; esac
+      is_own_key "$line" || return 0
+    done < "$f"
+  done
+  return 1
+}

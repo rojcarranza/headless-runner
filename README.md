@@ -44,7 +44,7 @@ skipped. The stages, in order:
 
 | Stage | What runs | What only you do |
 | --- | --- | --- |
-| `account` | Checks admin and secure token, turns on Remote Login, makes the user's SSH key and `~/Dev/github.com` | Paste the public key of the computer that will add this one in Infinitary (once) |
+| `account` | Checks admin and secure token, turns on Remote Login, makes the user's SSH key and `~/Dev/github.com` | Paste the public key of the computer that will add this one in Infinitary (once). It must be that computer's key, not this Mac's own: the stage refuses the own key |
 | `machine` | headless: Nix, FileVault off, auto sign-in, never asleep (lid closed too), key-only SSH, Tailscale, the shared CI tools (`gh` with `gh-axi`, which the scripts use for every GitHub call except sign-in), and a Rancher Desktop defaults profile; it opens Rancher Desktop once so Docker exists | Approve the Tailscale page it opens; click Open in macOS's window when Rancher Desktop first starts; turn off key expiry for the computer in Tailscale's admin page |
 | `claude-code` | Claude Code, which Infinitary runs its work with, from Anthropic's native installer at `~/.local/bin/claude`; puts that folder on PATH in `~/.zshenv`, the only profile a non-interactive SSH command reads, and checks that `claude --version` answers there by name | Nothing now; you sign it in to Claude later, through Infinitary's setup card |
 | `xcode` | Xcode from the App Store (27.1 or later), license, first launch, iOS platform, the iPhone 18 Pro and iPad Pro 11-inch (M5) simulators. Device Hub is part of Xcode | Sign in to the App Store |
@@ -148,6 +148,7 @@ on its first start (macOS may ask for one click) and then makes its `docker` com
 - FileVault is turned off and auto sign-in is on, so the Mac works after any
   restart; anyone holding the Air can read every account's files on it.
 - SSH takes keys only; only the keys in `keys/` and the user's own key get in.
+- Tailscale SSH stays off (`tailscale set --ssh=false`). When on, it answers port 22 itself and, in the tailnet's check mode, asks for a browser approval every 12 hours. `verify.sh` fails when it is on or when only this Mac's own key is authorized, so the first mate computer's key must be in `keys/` and `machines/<name>.json` (`sshKeys`; the file is written once, so edit it), then `bash setup.sh machine`. Before turning it off, prove key sign-in to macOS's sshd over the LAN address: `ssh -o BatchMode=yes -o IdentitiesOnly=yes -i <key> <user>@<LAN address> true`.
 - This Mac's SSH key, once on your GitHub account, reads and writes every repository the account can reach; any runner-up job running as this user can use it.
 - runner-up's host place runs a job as the new user, in its session: jobs can
   reach that user's files and saved passwords. Use it only for jobs you trust.

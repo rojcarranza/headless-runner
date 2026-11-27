@@ -47,8 +47,12 @@ if ! ls "$HR_ROOT"/keys/*.pub > /dev/null 2>&1; then
   printf 'public key: ' >&2
   IFS= read -r pub
   [[ "$pub" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp[0-9]+)\ [A-Za-z0-9+/=]+ ]] || die "that is not a public SSH key line"
+  ! is_own_key "$pub" || die "that is this Mac's own key. Run cat ~/.ssh/id_ed25519.pub on the computer that will add this one in Infinitary (not on this Mac) and paste that"
   printf '%s\n' "$pub" > "$HR_ROOT/keys/first-mate.pub"
 fi
+# A key file already in keys/ is no better when it holds only this Mac's own key.
+has_other_key "$HR_ROOT"/keys/*.pub \
+  || die "keys/ holds only this Mac's own key, which lets no other computer in. Add the first mate computer's public key as keys/first-mate.pub (cat ~/.ssh/id_ed25519.pub there), then run bash setup.sh account again"
 
 # One projects folder, the same path as on every other computer.
 mkdir -p "$DEV_HOME"
