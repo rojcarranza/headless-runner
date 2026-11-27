@@ -64,15 +64,11 @@ tailscale_ssh_off() {
   prefs="$(tailscale debug prefs 2> /dev/null)" || return 1
   grep -q '"RunSSH"' <<< "$prefs" && ! grep -Eq '"RunSSH":[[:space:]]*true' <<< "$prefs"
 }
+# sshd takes keys from the user's own file and from the file nix-darwin serves
+# it (AuthorizedKeysCommand): machines/<name>.json's sshKeys land in the second.
 # This Mac's own key lets it into itself only; another computer needs its own line.
 other_key_authorized() {
-  local line own
-  own="$(key_id "$(head -n 1 "$HOME/.ssh/id_ed25519.pub")")"
-  while IFS= read -r line; do
-    case "$line" in '' | '#'*) continue ;; esac
-    [ "$(key_id "$line")" = "$own" ] || return 0
-  done < "$HOME/.ssh/authorized_keys"
-  return 1
+  has_other_key "$HOME/.ssh/authorized_keys" "${NIX_AUTHORIZED_KEYS:-/etc/ssh/nix_authorized_keys.d/$HR_NAME}"
 }
 
 [ "$(uname -s)" = Darwin ] || { bad "this is a Mac"; exit 1; }

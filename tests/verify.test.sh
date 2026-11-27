@@ -48,10 +48,13 @@ mv "$T/bin/ssh" "$T/bin/ssh-host"
 printf '#!/bin/sh\ncase "$*" in\n  *git@github.com*) [ "${GH_KEY-ok}" = ok ] && { echo "Hi octo! You'"'"'ve successfully authenticated, but GitHub does not provide shell access."; exit 1; }; echo "Permission denied (publickey)." >&2; exit 255 ;;\nesac\nexec "$(dirname "$0")/ssh-host" "$@"\n' > "$T/bin/ssh"; chmod +x "$T/bin/ssh"
 # Tailscale's prefs as tailscale debug prefs prints them; SSH=on turns Tailscale SSH on.
 stub tailscale 'printf "{\n\t\"ControlURL\": \"https://controlplane.tailscale.com\",\n\t\"RunSSH\": %s,\n\t\"WantRunning\": true\n}\n" "$([ "${SSH-off}" = on ] && echo true || echo false)"'
-# sshd's authorized keys: the Mac's own key and the first mate computer's.
+# sshd's keys as nix-darwin leaves them: the user's own file holds the Mac's own
+# key (headless's first sign-in), the file nix-darwin serves holds sshKeys: the
+# own key and the first mate computer's.
 mkdir -p "$HOME/.ssh"; make_key "$HOME/.ssh/id_ed25519"; make_key "$T/mate"
 cat "$HOME/.ssh/id_ed25519.pub" > "$HOME/.ssh/authorized_keys"
-cat "$T/mate.pub" >> "$HOME/.ssh/authorized_keys"
+export NIX_AUTHORIZED_KEYS="$T/nix_authorized_keys"
+cat "$HOME/.ssh/id_ed25519.pub" "$T/mate.pub" > "$NIX_AUTHORIZED_KEYS"
 export PATH="$T/bin:$PATH"
 
 out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
@@ -67,11 +70,14 @@ out="$(SSH=on "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 1 "Tailscale SSH on fails the run"
 assert_contains "$out" "FAIL  Tailscale SSH is off" "and names the line"
 
-rm "$HOME/.ssh/authorized_keys"; cat "$HOME/.ssh/id_ed25519.pub" > "$HOME/.ssh/authorized_keys"
+cat "$HOME/.ssh/id_ed25519.pub" "$HOME/.ssh/id_ed25519.pub" > "$NIX_AUTHORIZED_KEYS"
 out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 1 "only the own key authorized fails the run"
 assert_contains "$out" "FAIL  SSH authorizes a key other than" "and names the line"
-cat "$T/mate.pub" >> "$HOME/.ssh/authorized_keys"
+rm "$NIX_AUTHORIZED_KEYS"
+out="$("$ROOT/verify.sh" 2>&1)"; rc=$?
+assert_eq "$rc" 1 "a missing nix-darwin key file leaves only the own key and fails the run"
+cat "$HOME/.ssh/id_ed25519.pub" "$T/mate.pub" > "$NIX_AUTHORIZED_KEYS"
 
 out="$(FILEVAULT=on "$ROOT/verify.sh" 2>&1)"; rc=$?
 assert_eq "$rc" 1 "FileVault on fails the run"

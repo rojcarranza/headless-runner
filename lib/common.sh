@@ -135,13 +135,17 @@ is_own_key() {
   [ "$(key_id "$1")" = "$(key_id "$(head -n 1 "$own")")" ]
 }
 
-# has_other_key DIR: true when a *.pub file in DIR holds a key that is not this
-# user's own.
+# has_other_key FILE...: true when a file holds a public key line that is not
+# this user's own. Blank and comment lines, and files that are missing, count
+# for nothing.
 has_other_key() {
-  local k
-  for k in "$1"/*.pub; do
-    [ -f "$k" ] || continue
-    is_own_key "$(head -n 1 "$k")" || return 0
+  local f line
+  for f in "$@"; do
+    [ -f "$f" ] || continue
+    while IFS= read -r line; do
+      case "$line" in '' | '#'*) continue ;; esac
+      is_own_key "$line" || return 0
+    done < "$f"
   done
   return 1
 }
