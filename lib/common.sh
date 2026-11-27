@@ -142,7 +142,7 @@ has_other_key() {
   local f line
   for f in "$@"; do
     [ -f "$f" ] || continue
-    while IFS= read -r line; do
+    while IFS= read -r line || [ -n "$line" ]; do
       case "$line" in '' | '#'*) continue ;; esac
       is_own_key "$line" || return 0
     done < "$f"

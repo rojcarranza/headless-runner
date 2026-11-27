@@ -20,9 +20,12 @@ cp "$T/mate.pub" "$T/keys/mac.pub"
 has_other_key "$T"/keys/*.pub && pass "keys/ with another computer's key passes" || fail "other key not found"
 rm -rf "$T/keys"; mkdir "$T/keys"
 has_other_key "$T"/keys/*.pub && fail "empty keys/ passes" || pass "empty keys/ is refused"
-# nix-darwin's file lists the own key twice, as the Mac's file does today.
+# nix-darwin's file lists the own key twice, as when keys/ holds only this Mac's own key.
 printf '# keys\n\n%s\n%s\n' "$(cat "$HOME/.ssh/id_ed25519.pub")" "$(cat "$HOME/.ssh/id_ed25519.pub")" > "$T/served"
 has_other_key "$T/served" "$T/absent" && fail "a file of only the own key (twice, with comments) passes" || pass "a file of only the own key, listed twice, is refused; a missing file is skipped"
 cat "$T/mate.pub" >> "$T/served"
 has_other_key "$T/absent" "$T/served" && pass "another computer's key on a later line is found" || fail "later line not found"
+# A last line with no final newline is still a key line.
+printf '%s' "$(cat "$T/mate.pub")" > "$T/keys/nonl.pub"
+has_other_key "$T/keys/nonl.pub" && pass "another computer's key on an unterminated last line is found" || fail "unterminated last line skipped"
 done_tests
