@@ -1,4 +1,6 @@
 # The local gate: no GitHub Actions run, so no plan minutes are spent.
 no_ci: true
 commands:
+  # The lint command's size step is baseline size, run from this project's
+  # standard-library copy in scripts/size-check.py, so no program is installed.
   lint: "./scripts/check.sh"
