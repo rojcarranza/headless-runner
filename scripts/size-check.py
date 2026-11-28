@@ -7,7 +7,7 @@ Exit codes: 0 ok, 1 a new or grown file over the limit, 2 a usage error.
 
 This is a standard-library copy of the baseline program's size command, so the
 gate needs no program installed. Keep its code-file rules, list format and
-messages the same as baseline's, so both read and write one list.
+messages the same as baseline's, so the program and this copy agree on one list.
 """
 import subprocess
 import sys
