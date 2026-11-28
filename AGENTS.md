@@ -23,6 +23,7 @@ The README explains how a person runs them; this file says how to change them.
 - Plain `gh` stays only for `gh auth login` and `gh auth setup-git`, which
   gh-axi has no command for; every other GitHub call goes through `gh-axi`.
 - The gate is `./scripts/check.sh`: `bash -n`, shellcheck, the secret scan, the
+  size check (`scripts/size-check.py`, which reads `.baseline-long-files`), the
   script tests in `tests/` (stand-ins print what macOS prints) and the machine
   flake evaluating for `aarch64-darwin`. It runs on Linux (with zsh). What only
   a run on a real Mac proves is listed in the README under "What the checks

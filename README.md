@@ -129,9 +129,16 @@ checks need.
 
 ## Checks
 
-`./scripts/check.sh` is the gate: `bash -n`, shellcheck, a secret scan, the
-script tests in `tests/` and the flake evaluating for an Apple silicon Mac. It
-runs on Linux (with zsh) or a Mac and spends no GitHub Actions minutes.
+`./scripts/check.sh` is the gate: `bash -n`, shellcheck, a secret scan, a size
+check, the script tests in `tests/` and the flake evaluating for an Apple
+silicon Mac. It runs on Linux (with zsh) or a Mac and spends no GitHub Actions
+minutes.
+
+The size check (`scripts/size-check.py`, standard-library Python) fails when a
+code file passes 1,000 lines. A file over the limit can stay only when it is
+listed in `.baseline-long-files` (path, tab, line count), and then it may shrink
+but never grow. Code files are known by their extension (`.sh`, `.nix`, `.py`
+and other languages), so documents and lock files never count.
 
 What the checks cannot prove (they run on Linux with stand-ins for macOS
 commands): that headless, Xcode, Homebrew, launchd and `systemsetup` behave on
